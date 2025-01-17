@@ -14,6 +14,7 @@
 #include "semaphores.h"
 
 pid_t PID;
+int STORAGE_EXISTS = 1;
 int getMaterials( int semId, storageSegment *storage );
 int work();
 
@@ -38,17 +39,17 @@ int main(int argc, char *argv[]){
 
     message msg;
 
-    while(1){
+    while(STORAGE_EXISTS){
         if( msgrcv( msgQId, &msg, sizeof(message), POLECENIE_2_MSG_ID, IPC_NOWAIT ) != -1 || msgrcv( msgQId, &msg, sizeof(message), MESSAGES_WORKERS, IPC_NOWAIT ) != -1 ){
             say("got message");
             break;
         }
+        sleep(5);
         if( getMaterials( semId, storage ) ){
             work();
         }
         else
             say("No materials!");
-        sleep(3);
     }
 
     say("job done");
@@ -57,8 +58,11 @@ int main(int argc, char *argv[]){
 
 // 1 -> success, 0 -> failure
 int getMaterials( int semId, storageSegment *storage ){
-    semLower( semId, SEM_WORKERS );
-    semLower( semId, SEM_DELIVERY );
+    if( semLower( semId, SEM_WORKERS ) || semLower( semId, SEM_DELIVERY ) ){
+        warning("No storage detected - closing");
+        STORAGE_EXISTS = 0;
+        return 0;
+    }
     // check for empty
     for( int i = 0; i < 3; i++ ){
         char value = storage[i].start[*storage[i].read];

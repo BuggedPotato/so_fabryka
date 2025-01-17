@@ -27,16 +27,16 @@ pid_t PID;
 int main(int argc, char *argv[]){
     PID = getpid();
 
-    if( argc < 2 ){
-        perror("Missing director PID argument");
-        exit(EXIT_FAILURE);
-    }
-    pid_t directorPID = atoi(argv[1]);
-    if( directorPID == 0 ){
-        perror( "Invalid director PID argument" );
-        errno = EINVAL;
-        exit(errno);
-    }
+    // if( argc < 2 ){
+    //     perror("Missing director PID argument");
+    //     exit(EXIT_FAILURE);
+    // }
+    // pid_t directorPID = atoi(argv[1]);
+    // if( directorPID == 0 ){
+    //     perror( "Invalid director PID argument" );
+    //     errno = EINVAL;
+    //     exit(errno);
+    // }
 
     key_t shmKey = getKey( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
     char *shmAddr = NULL;
@@ -48,9 +48,15 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
 
+
     key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
     int semId = getSemaphores( semKey, 2, 0600 );
     semaphoresSetup( semId );
+    
+    say("Sending continue signal");
+    printf("%d\n", getppid());
+    if( kill( getppid(), SIGCONT ) == -1)
+        error("error sending continue");
 
     key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     int msgQId = getMessageQueue( msgQKey, 0700 );
@@ -60,8 +66,9 @@ int main(int argc, char *argv[]){
         perror("error receiving a message");
         exit(EXIT_FAILURE);
     }
+    // here ppid is director
     say( "Got a message!" );
-    kill( directorPID, SIGUSR1 );
+    kill( getppid(), SIGUSR1 );
 
     deleteStorage( shmId, (void *)shmAddr );
     deleteSemaphores(semId);

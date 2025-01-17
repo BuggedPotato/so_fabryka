@@ -1,6 +1,6 @@
 #pragma once
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define SIZE_X 1
 #define SIZE_Y 2

@@ -10,34 +10,31 @@
 #include "constants.h"
 #include "utils.h"
 
+// fake signal handler for pause
+void foo(int sig){
+    return;
+}
 
 int main(int argc, char *argv[]){
-
-    pid_t directorPID;
-    if( (directorPID = fork()) == -1 ){
-        perror("director fork error");
-        exit(errno);
-    }
-    else if( directorPID == 0 ){
-        if( execl( "./director", "director", NULL )  == -1){
-            perror("error running director process");
-            exit(errno);
-        }
-    }
-
+    signal(SIGCONT, foo);
+   
     pid_t storagePID;
-    char tmp[6];
-    sprintf( tmp, "%d", directorPID );
+    // char tmp[6];
+    // sprintf( tmp, "%d", directorPID );
     if( (storagePID = fork()) == -1 ){
         perror("storage fork error");
         exit(errno);
     }
     else if( storagePID == 0 ){
-        if( execl( "./storage", "storage", tmp, NULL )  == -1){
+        if( execl( "./storage", "storage", NULL )  == -1){
             perror("error running storage process");
             exit(errno);
         }
     }
+    
+    say( "Awaiting storage setup..." );
+    pause();
+    say( "Continuing" );
 
     pid_t workersPID[WORKERS];
     for( int i = 0; i < WORKERS; i++ ){
@@ -52,7 +49,10 @@ int main(int argc, char *argv[]){
             }
         }
     }
-
+    if( execl( "./director", "director", NULL )  == -1){
+        perror("error running director process");
+        exit(errno);
+    }
     say( "Done! Shutting down..." );
 
     return 0;

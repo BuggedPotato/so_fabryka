@@ -12,6 +12,7 @@
 #include "types.h"
 pid_t PID;
 int STORAGE_RUNNING = 1; // for signal reasons 
+int msgQId;
 
 int deleteMessageQueue( int msgQId );
 int sendMessage( int msgQId, message *msg );
@@ -24,7 +25,7 @@ int main(int argc, char *argv[]){
     signal(SIGUSR1, storageCloseHandler);
 
     key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
-    int msgQId = getMessageQueue( msgQKey, 0700 );
+    msgQId = getMessageQueue( msgQKey, 0700 );
 
     message msg; 
     char c, foo;
@@ -51,8 +52,11 @@ int main(int argc, char *argv[]){
                 msg.type = POLECENIE_4_MSG_ID;
                 count = WORKERS + 1;
                 break;
+            case '5':
+                continue;
+                break;
             default:
-                // warning("Invalid input - options: 1, 2, 3, 4");
+                warning("Invalid input - options: 1, 2, 3, 4, 5");
                 continue;
                 break;
         }
@@ -68,10 +72,6 @@ int main(int argc, char *argv[]){
     //     //     printf( "%d - %d\n", res, WEXITSTATUS(status) );
     //     // else printf("%d\n", errno);
     // }
-    say("Children closed");
-    deleteMessageQueue(msgQId);
-
-    say("Shutting down...");
 
     return 0;
 }
@@ -94,6 +94,9 @@ int deleteMessageQueue( int id ){
 }
 
 void storageCloseHandler( int sig ){
-    say("Storage closing confirmed finishing");
+    say("Storage closing confirmed");
+    deleteMessageQueue(msgQId);
+    say("Shutting down...");
     STORAGE_RUNNING = 0;
+    exit(EXIT_SUCCESS);
 }
