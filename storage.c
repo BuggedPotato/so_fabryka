@@ -2,6 +2,7 @@
 #include<stdlib.h>
 #include<unistd.h>
 #include<string.h>
+#include<signal.h>
 #include<sys/types.h>
 #include<sys/sem.h>
 #include<sys/msg.h>
@@ -25,6 +26,18 @@ pid_t PID;
 
 int main(int argc, char *argv[]){
     PID = getpid();
+
+    if( argc < 2 ){
+        perror("Missing director PID argument");
+        exit(EXIT_FAILURE);
+    }
+    pid_t directorPID = atoi(argv[1]);
+    if( directorPID == 0 ){
+        perror( "Invalid director PID argument" );
+        errno = EINVAL;
+        exit(errno);
+    }
+
     key_t shmKey = getKey( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
     char *shmAddr = NULL;
     int shmId = createStorage( shmKey, STORAGE_TOTAL_SIZE );
@@ -36,18 +49,19 @@ int main(int argc, char *argv[]){
     }
 
     key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
-    int semId = getSemaphores( semKey, 2, 0700 );
+    int semId = getSemaphores( semKey, 2, 0600 );
     semaphoresSetup( semId );
 
     key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     int msgQId = getMessageQueue( msgQKey, 0700 );
     message msg;
     say("Entering standby mode - awaiting messages...");
-    if( msgrcv( msgQId, (void *)&msg, MSG_TEXT_SIZE, MESSAGES_STORAGE, 0 ) == -1 ){
+    if( msgrcv( msgQId, (void *)&msg, sizeof(message), MESSAGES_STORAGE, 0 ) == -1 ){
         perror("error receiving a message");
         exit(EXIT_FAILURE);
     }
     say( "Got a message!" );
+    kill( directorPID, SIGUSR1 );
 
     deleteStorage( shmId, (void *)shmAddr );
     deleteSemaphores(semId);

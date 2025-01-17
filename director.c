@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<signal.h>
 #include<unistd.h>
 #include<sys/types.h>
 #include<sys/wait.h>
@@ -10,82 +11,63 @@
 #include "utils.h"
 #include "types.h"
 pid_t PID;
+int STORAGE_RUNNING = 1; // for signal reasons 
 
 int deleteMessageQueue( int msgQId );
+int sendMessage( int msgQId, message *msg );
+
+void storageCloseHandler( int sig );
 
 int main(int argc, char *argv[]){
     PID = getpid();
-
-    int storageSize = STORAGE_SIZE;
-    if( argc > 1 )
-        storageSize = atoi(argv[1]);
-    if( storageSize <= 0 ){
-        perror( "Invalid storage size" );
-        errno = EINVAL;
-        exit(errno);
-    }
-
-    /* create all the child processes here */
-    pid_t storagePID;
-    if( (storagePID = fork()) == -1 ){
-        perror("storage fork error");
-        exit(errno);
-    }
-    else if( storagePID == 0 ){
-        if( execl( "./storage", "storage", NULL )  == -1){
-            perror("error running storage process");
-            exit(errno);
-        }
-    }
-
-    pid_t workersPID[WORKERS];
-    for( int i = 0; i < WORKERS; i++ ){
-        if( (workersPID[i] = fork()) == -1 ){
-            perror("worker fork error");
-            exit(errno);
-        }
-        else if( workersPID[i] == 0 ){
-            if( execl( "./worker", "worker", NULL )  == -1){
-                perror("error running worker process");
-                exit(errno);
-            }
-        }
-    }
-
+    
+    signal(SIGUSR1, storageCloseHandler);
 
     key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     int msgQId = getMessageQueue( msgQKey, 0700 );
+
     message msg; 
-    // msg.type = POLECENIE_1_MSG_ID;
-    // sleep(2);
-    // say("Sending message Polecenie_1");
-    // if( msgsnd( msgQId, (void *)&msg, MSG_TEXT_SIZE, 0 ) == -1 ){
-    //     perror("error sending message");
-    //     exit(errno);
-    // }
-    // say("Message sent!");
-
-    sleep(10);
-    msg.type = POLECENIE_2_MSG_ID;
-    say("Sending messages Polecenie_2");
-    for( int i = 0; i < WORKERS; i++ ){
-        if( msgsnd( msgQId, (void *)&msg, MSG_TEXT_SIZE, 0 ) == -1 ){
-            perror("error sending message");
-            exit(errno);
+    char c, foo;
+    int count = 1;
+    say("Waiting for input");
+    while( STORAGE_RUNNING ){
+        c = fgetc(stdin);
+        while ((foo = getchar()) != '\n' && foo != EOF);
+        count = 1;
+        switch (c)
+        {
+            case '1':
+                msg.type = POLECENIE_1_MSG_ID;
+                break;
+            case '2':
+                msg.type = POLECENIE_2_MSG_ID;
+                count = WORKERS;
+                break;
+            case '3':
+                msg.type = POLECENIE_3_MSG_ID;
+                count = WORKERS + 1;
+                break;
+            case '4':
+                msg.type = POLECENIE_4_MSG_ID;
+                count = WORKERS + 1;
+                break;
+            default:
+                // warning("Invalid input - options: 1, 2, 3, 4");
+                continue;
+                break;
         }
+        for( int i = 0; i < count; i++ )
+            sendMessage( msgQId, &msg );
+        say("Message sent");
     }
-    say("Messages sent!");
 
-    int status;
-    // waitpid(storagePID, &status, 0);
-    // printf( "%d\n", WEXITSTATUS(status) );
-    // say("Storage closed");
-    for( int i = 0; i < WORKERS + 1; i++ ){
-        int res = wait( &status );
-        if( WIFEXITED(status) )
-            printf( "%d - %d\n", res, WEXITSTATUS(status) );
-        else printf("%d\n", errno);
-    }
+    // int status;
+    // for( int i = 0; i < WORKERS + 1; i++ ){
+    //     int res = wait( &status );
+    //     // if( WIFEXITED(status) )
+    //     //     printf( "%d - %d\n", res, WEXITSTATUS(status) );
+    //     // else printf("%d\n", errno);
+    // }
     say("Children closed");
     deleteMessageQueue(msgQId);
 
@@ -94,11 +76,24 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-int deleteMessageQueue( int msgQId ){
-    if( msgctl( msgQId, IPC_RMID, NULL ) == -1 ){
+int sendMessage( int id, message *msg ){
+    if( msgsnd( id, (void *)msg, sizeof(message), 0 ) == -1 ){
+        perror("error sending message");
+        exit(errno);
+    }
+    return 0;
+}
+
+int deleteMessageQueue( int id ){
+    if( msgctl( id, IPC_RMID, NULL ) == -1 ){
         perror("error deleting message queue");
         exit(errno);
     }
     say("Message queue successfully deleted");
     return 0;
+}
+
+void storageCloseHandler( int sig ){
+    say("Storage closing confirmed finishing");
+    STORAGE_RUNNING = 0;
 }

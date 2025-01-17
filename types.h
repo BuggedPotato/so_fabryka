@@ -5,8 +5,8 @@ typedef struct memInterval{
     char *start;
     char *end;
     // indexes to read from and write to
-    char **read;
-    char **write;
+    int *read;
+    int *write;
     int elSize;
 } storageSegment;
 

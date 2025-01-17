@@ -48,7 +48,7 @@ int main(int argc, char *argv[]){
         }
         else
             say("No materials!");
-        sleep(5);
+        sleep(3);
     }
 
     say("job done");
@@ -61,23 +61,25 @@ int getMaterials( int semId, storageSegment *storage ){
     semLower( semId, SEM_DELIVERY );
     // check for empty
     for( int i = 0; i < 3; i++ ){
-        char value = **(storage[i].read);
-        if( !value ) // empty storage
+        char value = storage[i].start[*storage[i].read];
+        if( !value ){ //empty
+            semRaise(semId, SEM_DELIVERY);
+            semRaise(semId, SEM_WORKERS);
             return 0;
+        }
     }
     // take what needed
     for( int i = 0; i < 3; i++ ){
-        memset( *(storage[i].read), 0, storage[i].elSize );
-        *(storage[i].read) += storage[i].elSize;
-        // int diff = storage[i].end - storage[i].read;
-        if( *(storage[i].read) >= storage[i].end )
-            *(storage[i].read) = storage[i].start;
+        memset( storage[i].start + *storage[i].read, 0, storage[i].elSize );
+        *storage[i].read += storage[i].elSize;
+        if( storage[i].start + *storage[i].read >= storage[i].end )
+            *storage[i].read = 0;
     }
 
     #if DEBUG
         for( int i = 0; i < 3; i++ ){
             printf( "storage int[%d]: %p - %p\n", i, storage[i].start, storage[i].end );
-            printf( "access     [%d]: r -%p, w - %p\n", i, *(storage[i].read), *(storage[i].write) );
+            printf( "access     [%d]: r -%p, w - %p\n", i, *storage[i].read, *storage[i].write );
         }
     #endif
     semRaise(semId, SEM_DELIVERY);

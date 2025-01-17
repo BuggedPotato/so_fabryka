@@ -4,6 +4,7 @@
 int fileExists(char *fileName);
 void say( char *text );
 void warning( char *text );
+void error( char *text );
 
 key_t getKey( char* path, int id );
 int getStorage(key_t key);

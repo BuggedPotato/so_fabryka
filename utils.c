@@ -34,9 +34,14 @@ void warning( char *text ){
     printf("[%s %d]\e[33m[WARNING]\e[0m %s\n", program_invocation_short_name, getpid(), text);
 }
 
+void error( char *text ){
+    printf("[%s %d]\e[31m[ERROR]\e[0m %s\n", program_invocation_short_name, getpid(), text);
+}
+
 int getStorage(key_t key){
     int shmId = shmget( key, 0, IPC_CREAT|0600 );
     if( shmId == -1 ){
+        error("");
         perror("Shared memory get error");
         exit( errno );
     }
@@ -47,6 +52,7 @@ char* attachStorage( int id ){
     void *tmpPtr;
     tmpPtr = shmat( id, NULL, 0 );
     if( tmpPtr == (void *)-1 ){
+        error("");
         perror("Error attaching shared memory");
         exit(errno);
     }
@@ -56,6 +62,7 @@ char* attachStorage( int id ){
 int getSemaphores( key_t key, int count, int perms ){
     int semId;
     if( (semId = semget(key, count, IPC_CREAT|perms)) == -1 ){
+        error("");
         perror("error creating semaphores");
         exit(errno);
     }
@@ -81,22 +88,21 @@ int getStorageSegments( char* shmAddr, storageSegment *storageSegments ){
     storageSegments[0].end = storageSegments[0].start + baseSize;
     storageSegments[0].elSize = SIZE_X;
     int sizes[3] = {SIZE_X, SIZE_Y, SIZE_Z};
-    warning("here");
     for( int i = 1; i < 3; i++ ){
         storageSegments[i].start = storageSegments[i-1].end;
         storageSegments[i].end = storageSegments[i].start + sizes[i] * baseSize;
         storageSegments[i].elSize = sizes[i];
     }
 
-    warning("there");
-    printf("%p\n", storageSegments[0].read);
-    printf("%p\n", *(storageSegments[0].read));
-    *(storageSegments[0].read) = storageSegments[2].end;
-    *(storageSegments[0].write) = *(storageSegments[0].read) + 1;
+    storageSegments[0].read = (int *)storageSegments[2].end;
+    storageSegments[0].write = storageSegments[0].read + 1;
+    *storageSegments[0].read = 0;
+    *storageSegments[0].write = 0;
     for( int i = 1; i < 3; i++ ){
-        *(storageSegments[i].read) = *(storageSegments[i-1].write) + 1;
-        *(storageSegments[i].write) = *(storageSegments[i].read) + 1;
+        storageSegments[i].read = storageSegments[i-1].write + 1;
+        storageSegments[i].write = storageSegments[i].read + 1;
+        *storageSegments[i].read = 0;
+        *storageSegments[i].write = 0;
     }
-    warning("everywhere");
     return 0;
 }
