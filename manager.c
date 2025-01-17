@@ -9,7 +9,6 @@
 #include "constants.h"
 #include "utils.h"
 
-key_t getStorageKey();
 
 int main(int argc, char *argv[]){
 
@@ -21,10 +20,6 @@ int main(int argc, char *argv[]){
         errno = EINVAL;
         exit(errno);
     }
-    // key_t shmKey = getStorageKey();
-    // key_t msgQKey = getKey( "./director.c", 'M' );
-    // key_t workersSemKey = getKey( "./worker.c", 'W' );
-    // key_t deliverySemKey = getKey( "./delivery.c", 'D' );
 
     /* create all the child processes here */
     pid_t storagePID;
@@ -60,7 +55,13 @@ int main(int argc, char *argv[]){
         exit(errno);
     }
     else if( directorPID == 0 ){
-        if( execl( "./director", "director", NULL )  == -1){
+        char tmp[WORKERS+1][6];
+        sprintf( tmp[0], "%d", storagePID );
+        // sprintf( tmp[1], "%d", workersPID[] );
+        // for( int i = 0; i < WORKERS; i++ ){
+        //     sprintf( tmp[i+1], "%d", workersPID[i] );
+        // }
+        if( execl( "./director", "director", tmp[0], NULL )  == -1){
             perror("error running director process");
             exit(errno);
         }

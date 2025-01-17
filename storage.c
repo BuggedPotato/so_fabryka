@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<unistd.h>
+#include<string.h>
 #include<sys/types.h>
 #include<sys/sem.h>
 #include<sys/msg.h>
@@ -11,10 +12,11 @@
 #include "types.h"
 #include "utils.h"
 
-int getStorage(key_t key, int size);
-int storageSetup(int shmId, char **shmAddr, storageSegment *storageSegments);
+int createStorage(key_t key, int size);
+int storageSetup(int shmId, char **shmAddr, int size);
 int getOptimalSegmentSize(int M);
 int deleteStorage( int shmId, void *shmAddr );
+int loadStorageFile( char *fileName, char *dest, char *end );
 
 int semaphoresSetup( int semId );
 int deleteSemaphores( int semId );
@@ -23,21 +25,21 @@ pid_t PID;
 
 int main(int argc, char *argv[]){
     PID = getpid();
-    key_t shmKey = getKey( "./storage.c", 'S' );
+    key_t shmKey = getKey( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
     char *shmAddr = NULL;
-    int shmId = getStorage( shmKey, STORAGE_SIZE );
+    int shmId = createStorage( shmKey, STORAGE_TOTAL_SIZE );
     storageSegment segments[3];
     // maybe unnecessary if?
-    if( storageSetup(shmId, &shmAddr, segments) ){
+    if( storageSetup(shmId, &shmAddr, STORAGE_TOTAL_SIZE) ){
         perror( "error building storage structure" );
         exit(EXIT_FAILURE);
     }
 
-    key_t semKey = getKey( "./delivery.c", 'D' );
+    key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
     int semId = getSemaphores( semKey, 2, 0700 );
     semaphoresSetup( semId );
 
-    key_t msgQKey = getKey( "./director.c", 'M' );
+    key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     int msgQId = getMessageQueue( msgQKey, 0700 );
     message msg;
     say("Entering standby mode - awaiting messages...");
@@ -47,11 +49,9 @@ int main(int argc, char *argv[]){
     }
     say( "Got a message!" );
 
-    say( "Sleep now..." );
-    sleep(5);
-
     deleteStorage( shmId, (void *)shmAddr );
     deleteSemaphores(semId);
+    say("Shutting down");
 
     return 0;
 }
@@ -59,10 +59,9 @@ int main(int argc, char *argv[]){
     creates shm of 'size' elements + delivery and recieve value points
     size = M
 */
-int getStorage(key_t key, int size){
+int createStorage(key_t key, int size){
     
-    int sizeBytes = size + 6 * sizeof(int);
-    int shmId = shmget( key, sizeBytes, IPC_CREAT|0700 );
+    int shmId = shmget( key, size, IPC_CREAT|0700 );
     if( shmId == -1 ){
         perror("Shared memory allocation error");
         exit( errno );
@@ -71,52 +70,22 @@ int getStorage(key_t key, int size){
     return shmId;
 }
 
-int storageSetup(int shmId, char **shmAddr, storageSegment *storageSegments){
+int storageSetup(int shmId, char **shmAddr, int size){
     void *tmpPtr;
     tmpPtr = shmat( shmId, NULL, 0 );
     if( tmpPtr == (void *)-1 ){
         perror("Error attaching shared memory");
         if( shmctl( shmId, IPC_RMID, NULL ) == -1 ){
             perror( "error deleting shared memory" );
-            exit( errno );
         }
         exit(errno);
     }
     char *shm = (char *)tmpPtr;
     *shmAddr = shm;
 
-    int baseSize = getOptimalSegmentSize( STORAGE_SIZE );
-    storageSegments[0].start = shm;
-    storageSegments[0].end = storageSegments[0].start + baseSize;
-    for( int i = 1; i < 3; i++ ){
-        storageSegments[i].start = storageSegments[i-1].end;
-        storageSegments[i].end = storageSegments[i].start + (i+1) * baseSize;
-    }
-
-    storageSegments[0].read = (int *)storageSegments[2].end;
-    storageSegments[0].write = storageSegments[0].read + 1;
-    for( int i = 1; i < 3; i++ ){
-        storageSegments[i].read = storageSegments[i-1].write + 1;
-        storageSegments[i].write = storageSegments[i].read + 1;
-    }
-
-    // TODO read saved file
-
-    #if DEBUG
-        /*for( int i = 0; i < 3; i++ ){
-            printf( "storage int[%d]: %p - %p\n", i, storageSegments[i].start, storageSegments[i].end );
-            printf( "access     [%d]: r -%p, w - %p\n", i, storageSegments[i].read, storageSegments[i].write );
-        }*/
-    #endif
+    loadStorageFile( STORAGE_FILENAME, *shmAddr, *shmAddr + size );
 
     return 0;
-}
-
-/*
-    M elements total
-*/
-int getOptimalSegmentSize(int M){
-    return M / (SIZE_X + SIZE_Y + SIZE_Z);
 }
 
 int deleteStorage( int shmId, void *shmAddr ){
@@ -128,7 +97,7 @@ int deleteStorage( int shmId, void *shmAddr ){
         perror( "error deleting shared memory" );
         exit( errno );
     }
-    // TODO save to file
+        // TODO save to file
     #if DEBUG
         say("Successfully deleted storage");
     #endif
@@ -151,5 +120,31 @@ int deleteSemaphores( int semId ){
     #if DEBUG
         say("Successfully deleted semaphore set");
     #endif
+    return 0;
+}
+
+int loadStorageFile( char *fileName, char *dest, char *end ){
+    say("Loading storage file");
+    FILE* file = NULL;
+    if( (file = fopen( fileName, "r" )) == NULL ){
+        warning("No saved storage file found! Starting clean");
+        memset( dest, 0, end - dest );
+        return -1;
+    }
+    char buffer[256];
+    int res = 0;
+    int shift = 0;
+    while( (res = fread( buffer, sizeof(char), 256, file )) != 0 ){
+        shift += res;
+        if( dest + shift >= end ){
+            warning("Input file too long wiping storage");
+            fclose(file);
+            memset( dest, 0, end - dest );
+            return 1;
+        }
+        memcpy( dest + shift, buffer, res * sizeof(char) );
+    }
+    fclose( file );
+    say("File loaded successfully");
     return 0;
 }

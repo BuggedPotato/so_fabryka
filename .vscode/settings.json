@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "stat.h": "c",
-        "errno.h": "c"
+        "errno.h": "c",
+        "unistd.h": "c"
     }
 }
