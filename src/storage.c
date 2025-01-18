@@ -9,20 +9,22 @@
 #include<sys/ipc.h>
 #include<sys/shm.h>
 #include<errno.h>
-#include "constants.h"
-#include "types.h"
-#include "utils.h"
+#include "../include/constants.h"
+#include "../include/types.h"
+#include "../include/utils.h"
 
 int createStorage(key_t key, int size);
 int storageSetup(int shmId, char **shmAddr, int size);
 int getOptimalSegmentSize(int M);
-int deleteStorage( int shmId, void *shmAddr );
+int deleteStorage( int shmId, char *shmAddr, int size );
 int loadStorageFile( char *fileName, char *dest, char *end );
+int saveStorageFile( char *fileName, char *src, char *end );
 
 int semaphoresSetup( int semId );
 int deleteSemaphores( int semId );
 
 pid_t PID;
+int SAVE_TO_FILE = 0;
 
 int main(int argc, char *argv[]){
     PID = getpid();
@@ -60,6 +62,7 @@ int main(int argc, char *argv[]){
 
     key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     int msgQId = getMessageQueue( msgQKey, 0700 );
+
     message msg;
     say("Entering standby mode - awaiting messages...");
     if( msgrcv( msgQId, (void *)&msg, sizeof(message), MESSAGES_STORAGE, 0 ) == -1 ){
@@ -68,10 +71,12 @@ int main(int argc, char *argv[]){
     }
     // here ppid is director
     say( "Got a message!" );
-    kill( getppid(), SIGUSR1 );
+    if( msg.type == POLECENIE_3_MSG_ID )
+        SAVE_TO_FILE = 1;
 
-    deleteStorage( shmId, (void *)shmAddr );
+    deleteStorage( shmId, (void *)shmAddr, STORAGE_TOTAL_SIZE );
     deleteSemaphores(semId);
+    kill( getppid(), SIGUSR1 );
     say("Shutting down");
 
     return 0;
@@ -87,7 +92,6 @@ int createStorage(key_t key, int size){
         perror("Shared memory allocation error");
         exit( errno );
     }
-    // TODO saved file write
     return shmId;
 }
 
@@ -109,19 +113,17 @@ int storageSetup(int shmId, char **shmAddr, int size){
     return 0;
 }
 
-int deleteStorage( int shmId, void *shmAddr ){
-    if( shmdt( shmAddr ) == -1 ){
-        perror( "error detaching shared memory" );
+int deleteStorage( int shmId, char *shmAddr, int size ){
+    saveStorageFile( STORAGE_FILENAME, shmAddr, shmAddr + size );
+    if( shmdt( (void *)shmAddr ) == -1 ){
+        perror("error detaching shared memory");
         exit(errno);
     }
     if( shmctl( shmId, IPC_RMID, NULL ) == -1 ){
         perror( "error deleting shared memory" );
         exit( errno );
     }
-        // TODO save to file
-    #if DEBUG
-        say("Successfully deleted storage");
-    #endif
+    say("Successfully deleted storage");
     return 0;
 }
 
@@ -138,9 +140,7 @@ int deleteSemaphores( int semId ){
         perror("cannot delete semaphore set");
         exit(errno);
     }
-    #if DEBUG
-        say("Successfully deleted semaphore set");
-    #endif
+    say("Successfully deleted semaphore set");    
     return 0;
 }
 
@@ -157,7 +157,7 @@ int loadStorageFile( char *fileName, char *dest, char *end ){
     int shift = 0;
     while( (res = fread( buffer, sizeof(char), 256, file )) != 0 ){
         shift += res;
-        if( dest + shift >= end ){
+        if( dest + shift > end ){
             warning("Input file too long wiping storage");
             fclose(file);
             memset( dest, 0, end - dest );
@@ -167,5 +167,23 @@ int loadStorageFile( char *fileName, char *dest, char *end ){
     }
     fclose( file );
     say("File loaded successfully");
+    return 0;
+}
+
+int saveStorageFile( char *fileName, char *src, char *end ){
+    FILE* file = NULL;
+    if( (file = fopen( fileName, "w" )) == NULL ){
+        error("Could not open save file! Aborting");
+        exit(errno);
+    }
+    if( !SAVE_TO_FILE )
+        return 0;
+    say("Saving storage file");
+
+    if( fwrite( src, sizeof(char), end-src, file ) != end - src ){
+        error("Invalid number of elements written");
+    }
+    fclose( file );
+    say("File saved successfully");
     return 0;
 }

@@ -1,15 +1,17 @@
+srcDir = ./src
+includeDir = ./include
 all: manager storage director worker
-manager: manager.c utils.o constants.h
-	gcc -o manager manager.c utils.o
-director: director.c utils.o types.h constants.h
-	gcc -o director director.c utils.o
-storage: storage.c utils.o types.h constants.h
-	gcc -o storage storage.c utils.o
-worker: worker.c utils.o semaphores.o types.h constants.h
-	gcc -o worker worker.c utils.o semaphores.o
-semaphores.o: semaphores.c
-	gcc -c semaphores.c
-utils.o: utils.c
-	gcc -c utils.c
+manager: $(srcDir)/manager.c utils.o $(includeDir)/constants.h
+	gcc -o manager $(srcDir)/manager.c utils.o
+director: $(srcDir)/director.c utils.o $(includeDir)/types.h $(includeDir)/constants.h
+	gcc -o director $(srcDir)/director.c utils.o
+storage: $(srcDir)/storage.c utils.o $(includeDir)/types.h $(includeDir)/constants.h
+	gcc -o storage $(srcDir)/storage.c utils.o
+worker: $(srcDir)/worker.c utils.o semaphores.o $(includeDir)/types.h $(includeDir)/constants.h
+	gcc -o worker $(srcDir)/worker.c utils.o semaphores.o
+semaphores.o: $(srcDir)/semaphores.c
+	gcc -c $(srcDir)/semaphores.c
+utils.o: $(srcDir)/utils.c
+	gcc -c $(srcDir)/utils.c
 clean:
 	rm *.o

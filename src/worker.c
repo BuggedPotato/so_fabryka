@@ -8,10 +8,10 @@
 #include<sys/ipc.h>
 #include<sys/shm.h>
 #include<errno.h>
-#include "constants.h"
-#include "types.h"
-#include "utils.h"
-#include "semaphores.h"
+#include "../include/constants.h"
+#include "../include/types.h"
+#include "../include/utils.h"
+#include "../include/semaphores.h"
 
 pid_t PID;
 int STORAGE_EXISTS = 1;

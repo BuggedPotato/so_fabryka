@@ -7,9 +7,9 @@
 #include<sys/ipc.h>
 #include<sys/msg.h>
 #include<errno.h>
-#include "constants.h"
-#include "utils.h"
-#include "types.h"
+#include "../include/constants.h"
+#include "../include/utils.h"
+#include "../include/types.h"
 pid_t PID;
 int STORAGE_RUNNING = 1; // for signal reasons 
 int msgQId;

@@ -7,8 +7,8 @@
 #include<string.h>
 #include<sys/shm.h>
 #include<errno.h>
-#include "constants.h"
-#include "utils.h"
+#include "../include/constants.h"
+#include "../include/utils.h"
 
 // fake signal handler for pause
 void foo(int sig){

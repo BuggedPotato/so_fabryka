@@ -11,8 +11,8 @@
 #include<stdlib.h>
 #include<errno.h>
 
-#include "constants.h"
-#include "types.h"
+#include "../include/constants.h"
+#include "../include/types.h"
 
 extern char *program_invocation_short_name;
 
