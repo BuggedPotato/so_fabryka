@@ -11,7 +11,6 @@
 #include "../include/utils.h"
 #include "../include/types.h"
 pid_t PID;
-int STORAGE_RUNNING = 1; // for signal reasons 
 int msgQId;
 
 int deleteMessageQueue( int msgQId );
@@ -31,7 +30,7 @@ int main(int argc, char *argv[]){
     char c, foo;
     int count = 1;
     say("Waiting for input");
-    while( STORAGE_RUNNING ){
+    while( 1 ){
         c = fgetc(stdin);
         while ((foo = getchar()) != '\n' && foo != EOF);
         count = 1;
@@ -53,6 +52,7 @@ int main(int argc, char *argv[]){
                 count = WORKERS + 1;
                 break;
             case '5':
+                warning("Quitting");
                 continue;
                 break;
             default:
@@ -64,14 +64,7 @@ int main(int argc, char *argv[]){
             sendMessage( msgQId, &msg );
         say("Message sent");
     }
-
-    // int status;
-    // for( int i = 0; i < WORKERS + 1; i++ ){
-    //     int res = wait( &status );
-    //     // if( WIFEXITED(status) )
-    //     //     printf( "%d - %d\n", res, WEXITSTATUS(status) );
-    //     // else printf("%d\n", errno);
-    // }
+    deleteMessageQueue(msgQId);
 
     return 0;
 }
@@ -97,6 +90,5 @@ void storageCloseHandler( int sig ){
     say("Storage closing confirmed");
     deleteMessageQueue(msgQId);
     say("Shutting down...");
-    STORAGE_RUNNING = 0;
     exit(EXIT_SUCCESS);
 }

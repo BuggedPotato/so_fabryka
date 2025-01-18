@@ -38,6 +38,10 @@ void error( char *text ){
     printf("[%s %d]\e[31m[ERROR]\e[0m %s\n", program_invocation_short_name, getpid(), text);
 }
 
+void success( char *text ){
+    printf("[%s %d]\e[92m[SUCCESS]\e[0m %s\n", program_invocation_short_name, getpid(), text);
+}
+
 int getStorage(key_t key){
     int shmId = shmget( key, 0, IPC_CREAT|0600 );
     if( shmId == -1 ){

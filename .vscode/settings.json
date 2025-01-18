@@ -4,6 +4,7 @@
         "errno.h": "c",
         "unistd.h": "c",
         "msg.h": "c",
-        "utils.h": "c"
+        "utils.h": "c",
+        "ipc.h": "c"
     }
 }

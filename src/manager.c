@@ -19,8 +19,6 @@ int main(int argc, char *argv[]){
     signal(SIGCONT, foo);
    
     pid_t storagePID;
-    // char tmp[6];
-    // sprintf( tmp, "%d", directorPID );
     if( (storagePID = fork()) == -1 ){
         perror("storage fork error");
         exit(errno);
@@ -49,6 +47,24 @@ int main(int argc, char *argv[]){
             }
         }
     }
+
+    pid_t deliveriesPID[DELIVERIES];
+    int foo[3] = { SIZE_X, SIZE_Y, SIZE_Z };
+    char els[3][2];
+    for( int i = 0; i < DELIVERIES; i++ ){
+        if( (deliveriesPID[i] = fork()) == -1 ){
+            perror("delivery fork error");
+            exit(errno);
+        }
+        else if( deliveriesPID[i] == 0 ){
+            sprintf( els[i], "%d", foo[i] );
+            if( execl( "./delivery", "delivery", els[i], NULL )  == -1){
+                perror("error running delivery process");
+                exit(errno);
+            }
+        }
+    }
+
     if( execl( "./director", "director", NULL )  == -1){
         perror("error running director process");
         exit(errno);

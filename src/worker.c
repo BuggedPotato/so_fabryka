@@ -2,6 +2,7 @@
 #include<stdlib.h>
 #include<unistd.h>
 #include<string.h>
+#include<time.h>
 #include<sys/types.h>
 #include<sys/sem.h>
 #include<sys/msg.h>
@@ -38,17 +39,18 @@ int main(int argc, char *argv[]){
     say("Worker successfully attached message queue");
 
     message msg;
-
+    srand(time(NULL));
+    int res = 0;
     while(STORAGE_EXISTS){
         if( msgrcv( msgQId, &msg, sizeof(message), POLECENIE_2_MSG_ID, IPC_NOWAIT ) != -1 || msgrcv( msgQId, &msg, sizeof(message), MESSAGES_WORKERS, IPC_NOWAIT ) != -1 ){
             say("got message");
             break;
         }
-        sleep(5);
-        if( getMaterials( semId, storage ) ){
+        sleep(1+rand() % 4);
+        if( (res = getMaterials( semId, storage )) == 1 ){
             work();
         }
-        else
+        else if( res == 0 )
             say("No materials!");
     }
 
@@ -61,7 +63,7 @@ int getMaterials( int semId, storageSegment *storage ){
     if( semLower( semId, SEM_WORKERS ) || semLower( semId, SEM_DELIVERY ) ){
         warning("No storage detected - closing");
         STORAGE_EXISTS = 0;
-        return 0;
+        return -1;
     }
     // check for empty
     for( int i = 0; i < 3; i++ ){
@@ -83,7 +85,7 @@ int getMaterials( int semId, storageSegment *storage ){
     #if DEBUG
         for( int i = 0; i < 3; i++ ){
             printf( "storage int[%d]: %p - %p\n", i, storage[i].start, storage[i].end );
-            printf( "access     [%d]: r -%p, w - %p\n", i, *storage[i].read, *storage[i].write );
+            printf( "access     [%d]: r -%d, w - %d\n", i, *storage[i].read, *storage[i].write );
         }
     #endif
     semRaise(semId, SEM_DELIVERY);
@@ -93,6 +95,6 @@ int getMaterials( int semId, storageSegment *storage ){
 }
 
 int work(){
-    say("work work");
+    success("work work");
     return 0;
 }

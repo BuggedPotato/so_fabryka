@@ -29,17 +29,6 @@ int SAVE_TO_FILE = 0;
 int main(int argc, char *argv[]){
     PID = getpid();
 
-    // if( argc < 2 ){
-    //     perror("Missing director PID argument");
-    //     exit(EXIT_FAILURE);
-    // }
-    // pid_t directorPID = atoi(argv[1]);
-    // if( directorPID == 0 ){
-    //     perror( "Invalid director PID argument" );
-    //     errno = EINVAL;
-    //     exit(errno);
-    // }
-
     key_t shmKey = getKey( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
     char *shmAddr = NULL;
     int shmId = createStorage( shmKey, STORAGE_TOTAL_SIZE );
@@ -49,7 +38,6 @@ int main(int argc, char *argv[]){
         perror( "error building storage structure" );
         exit(EXIT_FAILURE);
     }
-
 
     key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
     int semId = getSemaphores( semKey, 2, 0600 );

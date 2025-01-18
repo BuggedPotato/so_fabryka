@@ -10,6 +10,7 @@
 #define STORAGE_SIZE (STORAGE_COUNT * (SIZE_X + SIZE_Y + SIZE_Z))
 #define STORAGE_TOTAL_SIZE (STORAGE_SIZE + 6 * sizeof(int))
 #define WORKERS 2
+#define DELIVERIES 3
 #define MSG_TEXT_SIZE 32
 
 #define SEM_WORKERS 0
