@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<unistd.h>
+#include<time.h>
 #include<signal.h>
 #include<sys/types.h>
 #include<sys/ipc.h>
@@ -10,6 +11,8 @@
 #include "../include/constants.h"
 #include "../include/utils.h"
 
+FILE *LOG_FILE;
+
 // fake signal handler for pause
 void foo(int sig){
     return;
@@ -17,6 +20,23 @@ void foo(int sig){
 
 int main(int argc, char *argv[]){
     signal(SIGCONT, foo);
+
+    char fileName[64];
+    time_t tmp;
+    time(&tmp);
+    strftime( fileName, sizeof(fileName), "./logs/log_%d-%m-%Y_%X.log", localtime(&tmp) );
+    say(fileName);
+    LOG_FILE = fopen(fileName, "w");
+    if( LOG_FILE == NULL ){
+        perror( "Could not open log file" );
+        exit(errno);
+    }
+    if( dup2( fileno(LOG_FILE), fileno(stderr) ) == -1 ){
+        perror( "dup error" );
+        fclose(LOG_FILE);
+        exit(EXIT_FAILURE);
+    }
+
    
     pid_t storagePID;
     if( (storagePID = fork()) == -1 ){

@@ -16,7 +16,7 @@
 pid_t PID;
 int STORAGE_EXISTS = 1;
 
-int deliver( int semId, storageSegment *storage );
+int deliver( int semId, storageSegment *storage, int el );
 
 int main(int argc, char *argv[]){
 
@@ -34,10 +34,10 @@ int main(int argc, char *argv[]){
 
     key_t shmKey = getKey( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
     int shmId = getStorage( shmKey );
-    storageSegment segments[3];
+    storageSegment storage[3];
     char *shmAddr = attachStorage( shmId );
-    getStorageSegments( shmAddr, segments );
-    storageSegment storage = segments[el];
+    getStorageSegments( shmAddr, storage );
+    // storageSegment storage = segments[el];
 
     key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
     int semId = getSemaphores( semKey, 2, 0600 );
@@ -45,8 +45,8 @@ int main(int argc, char *argv[]){
     srand(time(NULL));
     int res = 0;
     while(STORAGE_EXISTS){
-        sleep(1 + rand() % 4);
-        res = deliver( semId, &storage );
+        sleep(rand() % 3);
+        res = deliver( semId, storage, el );
         if( res == 0 ){
             say( "Storage full - skipping" );
         }
@@ -55,19 +55,24 @@ int main(int argc, char *argv[]){
         }
     }
 
+    // if( LOG_FILE != NULL ){
+    //     fclose(LOG_FILE);
+    //     success("Log file closed");
+    // }
     say("Quitting...");
     return 0;
 }
 
 // 1 -> success, 0 -> failure
-int deliver( int semId, storageSegment *storage ){
+int deliver( int semId, storageSegment *fullStorage, int el ){
     if( semLower( semId, SEM_WORKERS ) || semLower( semId, SEM_DELIVERY ) ){
         warning("No storage detected - closing");
         STORAGE_EXISTS = 0;
         return -1;
     }
+    storageSegment *storage = &fullStorage[el];
     // check for full
-    char value = storage->start[*(storage->read)];
+    char value = storage->start[*(storage->write)];
     if( value ){ //full
         semRaise(semId, SEM_DELIVERY);
         semRaise(semId, SEM_WORKERS);
@@ -81,7 +86,9 @@ int deliver( int semId, storageSegment *storage ){
     #endif
     // deliver
     // for( int i = 0; i < 3; i++ ){
-        memset( storage->start + *(storage->read), 1, storage->elSize );
+        int position[3] = {-1, -1, -1};
+        position[el] = *(storage->write);
+        memset( (void *)(storage->start + *(storage->write)), 1, storage->elSize );
         *(storage->write) += storage->elSize;
         if( storage->start + *(storage->write) >= storage->end )
             *(storage->write) = 0;
@@ -91,8 +98,11 @@ int deliver( int semId, storageSegment *storage ){
         printf( "delivery data: %p - %p\n", storage->start, storage->end );
         printf( "access     : r - %d, w - %d\n", *storage->read, *storage->write );
     #endif
+    drawStorage( fullStorage, position );
     semRaise(semId, SEM_DELIVERY);
     semRaise(semId, SEM_WORKERS);
 
     return 1;
 }
+
+

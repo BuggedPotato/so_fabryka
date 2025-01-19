@@ -12,11 +12,12 @@
 #include "../include/constants.h"
 #include "../include/types.h"
 #include "../include/utils.h"
+#include "../include/semaphores.h"
 
 int createStorage(key_t key, int size);
 int storageSetup(int shmId, char **shmAddr, int size);
 int getOptimalSegmentSize(int M);
-int deleteStorage( int shmId, char *shmAddr, int size );
+int deleteStorage( int shmId, int semId, char *shmAddr, int size );
 int loadStorageFile( char *fileName, char *dest, char *end );
 int saveStorageFile( char *fileName, char *src, char *end );
 
@@ -62,7 +63,7 @@ int main(int argc, char *argv[]){
     if( msg.type == POLECENIE_3_MSG_ID )
         SAVE_TO_FILE = 1;
 
-    deleteStorage( shmId, (void *)shmAddr, STORAGE_TOTAL_SIZE );
+    deleteStorage( shmId, semId, (void *)shmAddr, STORAGE_TOTAL_SIZE );
     deleteSemaphores(semId);
     kill( getppid(), SIGUSR1 );
     say("Shutting down");
@@ -101,7 +102,9 @@ int storageSetup(int shmId, char **shmAddr, int size){
     return 0;
 }
 
-int deleteStorage( int shmId, char *shmAddr, int size ){
+int deleteStorage( int shmId, int semId, char *shmAddr, int size ){
+    semLower( semId, SEM_DELIVERY );
+    semLower( semId, SEM_WORKERS );
     saveStorageFile( STORAGE_FILENAME, shmAddr, shmAddr + size );
     if( shmdt( (void *)shmAddr ) == -1 ){
         perror("error detaching shared memory");
@@ -140,18 +143,24 @@ int loadStorageFile( char *fileName, char *dest, char *end ){
         memset( dest, 0, end - dest );
         return -1;
     }
-    char buffer[256];
+    char buffer[128];
+    memset(dest, 0, end - dest);
     int res = 0;
     int shift = 0;
     while( (res = fread( buffer, sizeof(char), 256, file )) != 0 ){
-        shift += res;
-        if( dest + shift > end ){
-            warning("Input file too long wiping storage");
+        if( dest + shift + res > end ){
+            error("Input file too long wiping storage");
             fclose(file);
             memset( dest, 0, end - dest );
             return 1;
         }
         memcpy( dest + shift, buffer, res * sizeof(char) );
+        for( int i = 0; i < res; i++ ){
+            fprintf( stderr, "%02X ", *(dest + shift + i) );
+            if( (i+1)%16 == 0 )
+                fprintf(stderr, "\n");
+        }
+        shift += res;
     }
     fclose( file );
     say("File loaded successfully");

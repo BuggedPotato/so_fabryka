@@ -5,8 +5,8 @@ manager: $(srcDir)/manager.c utils.o $(includeDir)/constants.h
 	gcc -o manager $(srcDir)/manager.c utils.o
 director: $(srcDir)/director.c utils.o $(includeDir)/types.h $(includeDir)/constants.h
 	gcc -o director $(srcDir)/director.c utils.o
-storage: $(srcDir)/storage.c utils.o $(includeDir)/types.h $(includeDir)/constants.h
-	gcc -o storage $(srcDir)/storage.c utils.o
+storage: $(srcDir)/storage.c utils.o semaphores.o $(includeDir)/types.h $(includeDir)/constants.h
+	gcc -o storage $(srcDir)/storage.c utils.o semaphores.o
 worker: $(srcDir)/worker.c utils.o semaphores.o $(includeDir)/types.h $(includeDir)/constants.h
 	gcc -o worker $(srcDir)/worker.c utils.o semaphores.o
 delivery: $(srcDir)/delivery.c utils.o semaphores.o $(includeDir)/types.h $(includeDir)/constants.h

@@ -53,16 +53,18 @@ int main(int argc, char *argv[]){
                 break;
             case '5':
                 warning("Quitting");
+                printf("Quitting\n");
                 continue;
                 break;
             default:
-                warning("Invalid input - options: 1, 2, 3, 4, 5");
+                printf("Invalid input - options: 1, 2, 3, 4, 5\n");
                 continue;
                 break;
         }
         for( int i = 0; i < count; i++ )
             sendMessage( msgQId, &msg );
         say("Message sent");
+        printf("Message sent\n");
     }
     deleteMessageQueue(msgQId);
 
@@ -88,7 +90,9 @@ int deleteMessageQueue( int id ){
 
 void storageCloseHandler( int sig ){
     say("Storage closing confirmed");
+    printf("Storage closing confirmed\n");
     deleteMessageQueue(msgQId);
     say("Shutting down...");
+    printf("Shutting down...\n");
     exit(EXIT_SUCCESS);
 }

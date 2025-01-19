@@ -46,7 +46,7 @@ int main(int argc, char *argv[]){
             say("got message");
             break;
         }
-        sleep(1+rand() % 4);
+        sleep(1+rand() % 5);
         if( (res = getMaterials( semId, storage )) == 1 ){
             work();
         }
@@ -75,8 +75,10 @@ int getMaterials( int semId, storageSegment *storage ){
         }
     }
     // take what needed
+    int position[3] = {0, 0, 0};
     for( int i = 0; i < 3; i++ ){
-        memset( storage[i].start + *storage[i].read, 0, storage[i].elSize );
+        position[i] = *storage[i].read;
+        memset( (void *)(storage[i].start + *storage[i].read), 0, storage[i].elSize );
         *storage[i].read += storage[i].elSize;
         if( storage[i].start + *storage[i].read >= storage[i].end )
             *storage[i].read = 0;
@@ -88,6 +90,7 @@ int getMaterials( int semId, storageSegment *storage ){
             printf( "access     [%d]: r -%d, w - %d\n", i, *storage[i].read, *storage[i].write );
         }
     #endif
+    drawStorage( storage, position );
     semRaise(semId, SEM_DELIVERY);
     semRaise(semId, SEM_WORKERS);
 

@@ -14,5 +14,5 @@ int getSemaphores( key_t key, int count, int perms );
 int getMessageQueue( key_t key, int perms );
 
 int getStorageSegments( char* shmAddr, storageSegment *storageSegments );
-
+void drawStorage( storageSegment *storage, int *position );
 int processExists( pid_t pid );

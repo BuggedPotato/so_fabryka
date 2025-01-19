@@ -1,4 +1,5 @@
 #pragma once
+#include<stdio.h>
 
 #define DEBUG 0
 
@@ -6,7 +7,7 @@
 #define SIZE_Y 2
 #define SIZE_Z 3
 
-#define STORAGE_COUNT 15
+#define STORAGE_COUNT 16
 #define STORAGE_SIZE (STORAGE_COUNT * (SIZE_X + SIZE_Y + SIZE_Z))
 #define STORAGE_TOTAL_SIZE (STORAGE_SIZE + 6 * sizeof(int))
 #define WORKERS 2
@@ -37,3 +38,6 @@
 #define BADGE_MANAGER "MANAGER"
 #define BADGE_STORAGE "STORAGE"
 #define BADGE_DIRECTOR "DIRECTOR"
+
+#define LOG_NAME "log"
+// FILE *LOG_FILE;

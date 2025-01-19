@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include<sys/stat.h>
 #include<signal.h>
+#include<time.h>
 #include<sys/types.h>
 #include<sys/ipc.h>
 #include<sys/sem.h>
@@ -15,6 +16,7 @@
 #include "../include/types.h"
 
 extern char *program_invocation_short_name;
+void getTime( char *dest );
 
 int fileExists(char *fileName){
     struct stat buffer;
@@ -27,19 +29,34 @@ key_t getKey( char* path, int id ){
 }
 
 void say( char *text ){
-    printf("[%s %d] %s\n", program_invocation_short_name, getpid(), text);
+    char t[9];
+    getTime( t );
+    fprintf(stderr, "[%s][%s %d] %s\n", t, program_invocation_short_name, getpid(), text);
 }
 
 void warning( char *text ){
-    printf("[%s %d]\e[33m[WARNING]\e[0m %s\n", program_invocation_short_name, getpid(), text);
+    char t[9];
+    getTime( t );
+    fprintf(stderr, "[%s][%s %d]\e[33m[WARNING]\e[0m %s\n", t, program_invocation_short_name, getpid(), text);
 }
 
 void error( char *text ){
-    printf("[%s %d]\e[31m[ERROR]\e[0m %s\n", program_invocation_short_name, getpid(), text);
+    char t[9];
+    getTime( t );
+    fprintf(stderr, "[%s][%s %d]\e[31m[ERROR]\e[0m %s\n", t, program_invocation_short_name, getpid(), text);
 }
 
 void success( char *text ){
-    printf("[%s %d]\e[92m[SUCCESS]\e[0m %s\n", program_invocation_short_name, getpid(), text);
+    char t[9];
+    getTime( t );
+    fprintf(stderr, "[%s][%s %d]\e[92m[SUCCESS]\e[0m %s\n", t, program_invocation_short_name, getpid(), text);
+}
+
+void getTime( char *dest ){
+    time_t tmp;
+    time(&tmp);
+    struct tm *t = localtime(&tmp);
+    sprintf( dest, "%02d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
 }
 
 int getStorage(key_t key){
@@ -89,7 +106,7 @@ int processExists( pid_t pid ){
 int getStorageSegments( char* shmAddr, storageSegment *storageSegments ){
     int baseSize = STORAGE_COUNT;
     storageSegments[0].start = shmAddr;
-    storageSegments[0].end = storageSegments[0].start + baseSize;
+    storageSegments[0].end = storageSegments[0].start + baseSize * SIZE_X;
     storageSegments[0].elSize = SIZE_X;
     int sizes[3] = {SIZE_X, SIZE_Y, SIZE_Z};
     for( int i = 1; i < 3; i++ ){
@@ -100,13 +117,49 @@ int getStorageSegments( char* shmAddr, storageSegment *storageSegments ){
 
     storageSegments[0].read = (int *)storageSegments[2].end;
     storageSegments[0].write = storageSegments[0].read + 1;
-    *storageSegments[0].read = 0;
-    *storageSegments[0].write = 0;
+    // *storageSegments[0].read = 0;
+    // *storageSegments[0].write = 0;
     for( int i = 1; i < 3; i++ ){
         storageSegments[i].read = storageSegments[i-1].write + 1;
         storageSegments[i].write = storageSegments[i].read + 1;
-        *storageSegments[i].read = 0;
-        *storageSegments[i].write = 0;
+        // *storageSegments[i].read = 0;
+        // *storageSegments[i].write = 0;
     }
     return 0;
+}
+
+void drawStorage( storageSegment *storage, int *position ){
+    printf("\e[2J\e[H");
+    char colours[3][6] = { "\e[36m", "\e[35m", "\e[37m" };
+    char def[] = "\e[39m";
+    int c = 0;
+    for( int i = 0; i < 3; i++ ){
+        int line = 0;
+        printf("\nr: %d, w: %d %s %d\n", *storage[i].read, *storage[i].write, program_invocation_short_name, position[i]);
+        for( char *b = storage[i].start; b < storage[i].end; ){
+            printf(colours[c]);
+            int highlight = 0;
+            if( position[i] >= 0 && (b - storage[i].start) == position[i] ){
+                highlight = 1;
+                printf("\e[43m");
+            }
+            for( int j = 0; j < storage[i].elSize; j++, b++ ){
+                printf("%02X ", *b);
+                line += 1;
+                if( line % 4 == 0 )
+                    printf(" ");
+                if( line >= 8 ){
+                    printf("\n");
+                    line = 0;
+                }
+            }
+            if( highlight ){
+                printf("\e[49m");
+            }
+            printf(def);
+            c++;
+            if( c >= 3 ) c = 0;
+        }
+    }
+    // printf("=======================");
 }

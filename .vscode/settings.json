@@ -5,6 +5,7 @@
         "unistd.h": "c",
         "msg.h": "c",
         "utils.h": "c",
-        "ipc.h": "c"
+        "ipc.h": "c",
+        "semaphores.h": "c"
     }
 }
