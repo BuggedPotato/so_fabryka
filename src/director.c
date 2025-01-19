@@ -24,7 +24,7 @@ int main(int argc, char *argv[]){
     signal(SIGUSR1, storageCloseHandler);
 
     key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
-    msgQId = getMessageQueue( msgQKey, 0700 );
+    msgQId = getMessageQueue( msgQKey, 0340 );
 
     message msg; 
     char c, foo;

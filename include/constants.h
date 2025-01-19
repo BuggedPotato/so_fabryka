@@ -19,11 +19,11 @@
 
 #define STORAGE_FILENAME "storage_dump"
 
-#define STORAGE_KEY_STR "./storage.c"
+#define STORAGE_KEY_STR "./src/storage.c"
 #define STORAGE_KEY_CHAR 'S'
-#define SEM_KEY_STR "./delivery.c"
+#define SEM_KEY_STR "./src/delivery.c"
 #define SEM_KEY_CHAR 'D'
-#define MSGQ_KEY_STRING "./director.c"
+#define MSGQ_KEY_STRING "./src/director.c"
 #define MSGQ_KEY_CHAR 'M'
 
 
