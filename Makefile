@@ -15,5 +15,7 @@ semaphores.o: $(srcDir)/semaphores.c
 	gcc -c $(srcDir)/semaphores.c
 utils.o: $(srcDir)/utils.c
 	gcc -c $(srcDir)/utils.c
+clean_log:
+	rm ./logs/*.log
 clean:
 	rm *.o

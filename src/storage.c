@@ -140,6 +140,7 @@ int loadStorageFile( char *fileName, char *dest, char *end ){
     FILE* file = NULL;
     if( (file = fopen( fileName, "r" )) == NULL ){
         warning("No saved storage file found! Starting clean");
+        printf("\e[HNo saved storage file found! Starting clean");
         memset( dest, 0, end - dest );
         return -1;
     }
@@ -164,6 +165,7 @@ int loadStorageFile( char *fileName, char *dest, char *end ){
     }
     fclose( file );
     say("File loaded successfully");
+    printf("\e[HFile loaded successfully");
     return 0;
 }
 

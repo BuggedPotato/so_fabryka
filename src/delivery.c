@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
     srand(time(NULL));
     int res = 0;
     while(STORAGE_EXISTS){
-        sleep(rand() % 3);
+        sleep(rand() % 4);
         res = deliver( semId, storage, el );
         if( res == 0 ){
             say( "Storage full - skipping" );
@@ -55,10 +55,6 @@ int main(int argc, char *argv[]){
         }
     }
 
-    // if( LOG_FILE != NULL ){
-    //     fclose(LOG_FILE);
-    //     success("Log file closed");
-    // }
     say("Quitting...");
     return 0;
 }

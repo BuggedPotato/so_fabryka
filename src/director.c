@@ -29,7 +29,9 @@ int main(int argc, char *argv[]){
     message msg; 
     char c, foo;
     int count = 1;
+    printf("\e[2J");
     say("Waiting for input");
+    printf("\e[H\e[KWaiting for input:");
     while( 1 ){
         c = fgetc(stdin);
         while ((foo = getchar()) != '\n' && foo != EOF);
@@ -57,14 +59,14 @@ int main(int argc, char *argv[]){
                 continue;
                 break;
             default:
-                printf("Invalid input - options: 1, 2, 3, 4, 5\n");
+                printf("\e[H\e[KInvalid input - options: 1, 2, 3, 4, 5");
                 continue;
                 break;
         }
         for( int i = 0; i < count; i++ )
             sendMessage( msgQId, &msg );
         say("Message sent");
-        printf("Message sent\n");
+        printf("\e[2J\e[H\e[KMessage sent\n");
     }
     deleteMessageQueue(msgQId);
 

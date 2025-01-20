@@ -129,13 +129,16 @@ int getStorageSegments( char* shmAddr, storageSegment *storageSegments ){
 }
 
 void drawStorage( storageSegment *storage, int *position ){
-    printf("\e[2J\e[H");
+    printf("\e[3;1H");
+    char t[10];
+    getTime(t);
+    printf("\e[KLast update: %s\n", t);
     char colours[3][6] = { "\e[36m", "\e[35m", "\e[37m" };
     char def[] = "\e[39m";
     int c = 0;
     for( int i = 0; i < 3; i++ ){
         int line = 0;
-        printf("\nr: %d, w: %d %s %d\n", *storage[i].read, *storage[i].write, program_invocation_short_name, position[i]);
+        printf("\n\e[Kr: %d, w: %d %s %d\n", *storage[i].read, *storage[i].write, program_invocation_short_name, position[i]);
         for( char *b = storage[i].start; b < storage[i].end; ){
             printf(colours[c]);
             int highlight = 0;
@@ -161,5 +164,4 @@ void drawStorage( storageSegment *storage, int *position ){
             if( c >= 3 ) c = 0;
         }
     }
-    // printf("=======================");
 }
