@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
     srand(time(NULL));
     int res = 0;
     while(STORAGE_EXISTS){
-        sleep(rand() % 4);
+        usleep(1+rand() % 15);
         res = deliver( semId, storage, el );
         if( res == 0 ){
             say( "Storage full - skipping" );
@@ -94,7 +94,7 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
         printf( "delivery data: %p - %p\n", storage->start, storage->end );
         printf( "access     : r - %d, w - %d\n", *storage->read, *storage->write );
     #endif
-    drawStorage( fullStorage, position );
+    // drawStorage( fullStorage, position );
     semRaise(semId, SEM_DELIVERY);
     semRaise(semId, SEM_WORKERS);
 

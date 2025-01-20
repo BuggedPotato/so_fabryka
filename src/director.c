@@ -13,15 +13,20 @@
 pid_t PID;
 int msgQId;
 
+int STORAGE_RUNNNING = 1, FACTORY_RUNNING = 1;
+
 int deleteMessageQueue( int msgQId );
 int sendMessage( int msgQId, message *msg );
 
 void storageCloseHandler( int sig );
+void workerCloseHandler( int sig );
+void quitCheck();
 
 int main(int argc, char *argv[]){
     PID = getpid();
     
     signal(SIGUSR1, storageCloseHandler);
+    signal(SIGUSR2, workerCloseHandler);
 
     key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     msgQId = getMessageQueue( msgQKey, 0340 );
@@ -32,7 +37,8 @@ int main(int argc, char *argv[]){
     printf("\e[2J");
     say("Waiting for input");
     printf("\e[H\e[KWaiting for input:");
-    while( 1 ){
+    int cond = 1;
+    while( STORAGE_RUNNNING || FACTORY_RUNNING ){
         c = fgetc(stdin);
         while ((foo = getchar()) != '\n' && foo != EOF);
         count = 1;
@@ -56,6 +62,7 @@ int main(int argc, char *argv[]){
             case '5':
                 warning("Quitting");
                 printf("Quitting\n");
+                cond = 0;
                 continue;
                 break;
             default:
@@ -93,8 +100,22 @@ int deleteMessageQueue( int id ){
 void storageCloseHandler( int sig ){
     say("Storage closing confirmed");
     printf("Storage closing confirmed\n");
-    deleteMessageQueue(msgQId);
-    say("Shutting down...");
-    printf("Shutting down...\n");
-    exit(EXIT_SUCCESS);
+    STORAGE_RUNNNING = 0;
+    quitCheck();
+}
+
+void workerCloseHandler( int sig ){
+    say("Worker closing confirmed");
+    printf("Worker closing confirmed\n");
+    FACTORY_RUNNING = 0;
+    quitCheck();
+}
+
+void quitCheck(){
+    if( !(STORAGE_RUNNNING || FACTORY_RUNNING) ){
+        deleteMessageQueue(msgQId);
+        say("Shutting down...");
+        printf("Shutting down...\n");
+        exit(EXIT_SUCCESS);
+    }
 }

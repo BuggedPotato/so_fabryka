@@ -3,6 +3,7 @@
 #include<unistd.h>
 #include<string.h>
 #include<time.h>
+#include<signal.h>
 #include<sys/types.h>
 #include<sys/sem.h>
 #include<sys/msg.h>
@@ -46,7 +47,7 @@ int main(int argc, char *argv[]){
             say("got message");
             break;
         }
-        sleep(1+rand() % 5);
+        usleep(2+rand() % 10);
         if( (res = getMaterials( semId, storage )) == 1 ){
             work();
         }
@@ -54,6 +55,7 @@ int main(int argc, char *argv[]){
             say("No materials!");
     }
 
+    kill( getppid(), SIGUSR2 );
     say("job done");
     return 0;
 }
@@ -90,7 +92,7 @@ int getMaterials( int semId, storageSegment *storage ){
             printf( "access     [%d]: r -%d, w - %d\n", i, *storage[i].read, *storage[i].write );
         }
     #endif
-    drawStorage( storage, position );
+    // drawStorage( storage, position );
     semRaise(semId, SEM_DELIVERY);
     semRaise(semId, SEM_WORKERS);
 
