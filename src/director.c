@@ -38,7 +38,7 @@ int main(int argc, char *argv[]){
     say("Waiting for input");
     printf("\e[H\e[KWaiting for input:");
     int cond = 1;
-    while( STORAGE_RUNNNING || FACTORY_RUNNING ){
+    while( cond && (STORAGE_RUNNNING || FACTORY_RUNNING) ){
         c = fgetc(stdin);
         while ((foo = getchar()) != '\n' && foo != EOF);
         count = 1;

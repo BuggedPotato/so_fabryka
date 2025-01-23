@@ -49,7 +49,7 @@ void error( char *text ){
 void success( char *text ){
     char t[9];
     getTime( t );
-    fprintf(stderr, "[%s][%s %d]\e[92m[SUCCESS]\e[0m %s\n", t, program_invocation_short_name, getpid(), text);
+    fprintf(stderr, "[%s][%s %d]\e[92m[OK]\e[0m %s\n", t, program_invocation_short_name, getpid(), text);
 }
 
 void getTime( char *dest ){

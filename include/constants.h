@@ -2,6 +2,12 @@
 #include<stdio.h>
 
 #define DEBUG 0
+#define VERBOSE 0
+
+#define SPEED NO_SLEEP
+#define SLOW 2
+#define FAST 1
+#define NO_SLEEP 0
 
 #define SIZE_X 1
 #define SIZE_Y 2
@@ -16,6 +22,7 @@
 
 #define SEM_WORKERS 0
 #define SEM_DELIVERY 1
+#define SEM_QUEUE 2
 
 #define STORAGE_FILENAME "storage_dump"
 

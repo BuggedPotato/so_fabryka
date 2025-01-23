@@ -37,22 +37,29 @@ int main(int argc, char *argv[]){
     storageSegment storage[3];
     char *shmAddr = attachStorage( shmId );
     getStorageSegments( shmAddr, storage );
-    // storageSegment storage = segments[el];
 
     key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
-    int semId = getSemaphores( semKey, 2, 0600 );
+    int semId = getSemaphores( semKey, 3, 0600 );
 
-    srand(time(NULL));
+    srand(PID);
     int res = 0;
     while(STORAGE_EXISTS){
-        usleep(1+rand() % 15);
+        #if SPEED != NO_SLEEP
+            #if SPEED == SLOW
+                sleep(1+rand() % 10);
+            #elif SPEED == FAST
+                usleep(200+rand() % 1000);
+            #endif
+        #endif
         res = deliver( semId, storage, el );
-        if( res == 0 ){
-            say( "Storage full - skipping" );
-        }
-        else if( res == 1 ){
-            success( "Delivery done!" );
-        }
+        #if VERBOSE
+            if( res == 0 ){
+                say( "Storage full - skipping" );
+            }
+            else if( res == 1 ){
+                success( "Delivery done!" );
+            }
+        #endif
     }
 
     say("Quitting...");
@@ -61,6 +68,11 @@ int main(int argc, char *argv[]){
 
 // 1 -> success, 0 -> failure
 int deliver( int semId, storageSegment *fullStorage, int el ){
+    if( semLower(semId, SEM_QUEUE) == -1 ){
+        warning("No queue detected - closing");
+        STORAGE_EXISTS = 0;
+        return -1;
+    }
     if( semLower( semId, SEM_WORKERS ) || semLower( semId, SEM_DELIVERY ) ){
         warning("No storage detected - closing");
         STORAGE_EXISTS = 0;
@@ -72,6 +84,7 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
     if( value ){ //full
         semRaise(semId, SEM_DELIVERY);
         semRaise(semId, SEM_WORKERS);
+        semRaise(semId, SEM_QUEUE);
         return 0;
     }
 
@@ -94,9 +107,12 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
         printf( "delivery data: %p - %p\n", storage->start, storage->end );
         printf( "access     : r - %d, w - %d\n", *storage->read, *storage->write );
     #endif
-    // drawStorage( fullStorage, position );
+    #if VERBOSE
+        drawStorage( fullStorage, position );
+    #endif
     semRaise(semId, SEM_DELIVERY);
     semRaise(semId, SEM_WORKERS);
+    semRaise(semId, SEM_QUEUE);
 
     return 1;
 }
