@@ -73,7 +73,7 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
         STORAGE_EXISTS = 0;
         return -1;
     }
-    if( semLower( semId, SEM_WORKERS ) || semLower( semId, SEM_DELIVERY ) ){
+    if( semLower( semId, SEM_STORAGE ) ){
         warning("No storage detected - closing");
         STORAGE_EXISTS = 0;
         return -1;
@@ -82,8 +82,8 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
     // check for full
     char value = storage->start[*(storage->write)];
     if( value ){ //full
-        semRaise(semId, SEM_DELIVERY);
-        semRaise(semId, SEM_WORKERS);
+        // semRaise(semId, SEM_DELIVERY);
+        semRaise(semId, SEM_STORAGE);
         semRaise(semId, SEM_QUEUE);
         return 0;
     }
@@ -108,10 +108,10 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
         printf( "access     : r - %d, w - %d\n", *storage->read, *storage->write );
     #endif
     #if VERBOSE
-        drawStorage( fullStorage, position );
     #endif
-    semRaise(semId, SEM_DELIVERY);
-    semRaise(semId, SEM_WORKERS);
+        drawStorage( fullStorage, position );
+    // semRaise(semId, SEM_DELIVERY);
+    semRaise(semId, SEM_STORAGE);
     semRaise(semId, SEM_QUEUE);
 
     return 1;

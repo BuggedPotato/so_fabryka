@@ -104,10 +104,14 @@ int storageSetup(int shmId, char **shmAddr, int size){
 
 int deleteStorage( int shmId, int semId, char *shmAddr, int size ){
     say("waiting for sems");
-    semLower( semId, SEM_DELIVERY );
-    say("sem deliver");
-    semLower( semId, SEM_WORKERS );
-    say("sem workers");
+    if( semLower( semId, SEM_STORAGE ) == -1 ){
+        error("No semaphores found");
+        exit(EXIT_FAILURE);
+    }
+    say("storage past sems");
+    // say("sem deliver");
+    // semLower( semId, SEM_STORAGE );
+    // say("sem workers");
     saveStorageFile( STORAGE_FILENAME, shmAddr, shmAddr + size );
     if( shmdt( (void *)shmAddr ) == -1 ){
         perror("error detaching shared memory");
@@ -120,13 +124,13 @@ int deleteStorage( int shmId, int semId, char *shmAddr, int size ){
     say("Successfully deleted storage");
     //no raising because theyre deleted right after
     // semRaise(semId, SEM_DELIVERY);
-    // semRaise(semId, SEM_WORKERS);
+    // semRaise(semId, SEM_STORAGE);
     //semRaise(semId, SEM_QUEUE);
     return 0;
 }
 
 int semaphoresSetup( int semId ){
-    if( semctl( semId, SEM_WORKERS, SETVAL, 1 ) == -1 || semctl( semId, SEM_DELIVERY, SETVAL, 1 ) == -1 || semctl(semId, SEM_QUEUE, SETVAL, 1) == -1 ){
+    if( semctl( semId, SEM_STORAGE, SETVAL, 1 ) == -1 || semctl( semId, SEM_DELIVERY, SETVAL, 1 ) == -1 || semctl(semId, SEM_QUEUE, SETVAL, 1) == -1 ){
         perror("cannot set semaphores init value");
         exit(errno);
     }

@@ -15,6 +15,8 @@
 #include "../include/constants.h"
 #include "../include/types.h"
 
+time_t LAST_DRAW = 0;
+
 extern char *program_invocation_short_name;
 void getTime( char *dest );
 
@@ -129,6 +131,10 @@ int getStorageSegments( char* shmAddr, storageSegment *storageSegments ){
 }
 
 void drawStorage( storageSegment *storage, int *position ){
+    time_t n;
+    if( time(&n) - LAST_DRAW >= 2 || LAST_DRAW == 0 )
+        LAST_DRAW = n;
+    else return;
     printf("\e[3;1H");
     char t[10];
     getTime(t);

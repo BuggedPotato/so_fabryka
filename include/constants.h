@@ -1,5 +1,6 @@
 #pragma once
 #include<stdio.h>
+#include<time.h>
 
 #define DEBUG 0
 #define VERBOSE 0
@@ -20,7 +21,8 @@
 #define DELIVERIES 3
 #define MSG_TEXT_SIZE 32
 
-#define SEM_WORKERS 0
+#define SEM_STORAGE 0
+// #define SEM_WORKERS 0
 #define SEM_DELIVERY 1
 #define SEM_QUEUE 2
 
