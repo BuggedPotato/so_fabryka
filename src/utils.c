@@ -82,7 +82,8 @@ char* attachStorage( int id ){
     return (char *)tmpPtr;
 }
 
-int getSemaphores( key_t key, int count, int perms ){
+int getSemaphores( key_t key, int count, int perms ){    printf("\e[2J");
+
     int semId;
     if( (semId = semget(key, count, IPC_CREAT|perms)) == -1 ){
         error("");
@@ -131,15 +132,15 @@ void drawStorage( storageSegment *storage, int *position, int operation ){
     if( time(&n) - LAST_DRAW >= 2 || LAST_DRAW == 0 )
         LAST_DRAW = n;
     else return;
-    printf("\e[3;1H");
+    printf("\e[2;1H");
     char t[10];
     getTime(t);
-    printf("\e[2KLast update: %s\n", t);
+    printf("\e[0JLast update: %s\n", t);
     char colours[3][6] = { "\e[36m", "\e[35m", "\e[37m" };
     char def[] = "\e[39m";
     int c = 0;
     for( int i = 0; i < 3; i++ ){
-        int line = 1;
+        int line = 0;
         printf("\n\e[2Kr: %d, w: %d %s %d\n", *storage[i].read, *storage[i].write, program_invocation_short_name, position[i]);
         for( char *b = storage[i].start; b < storage[i].end; ){
             printf(colours[c]);
@@ -156,9 +157,9 @@ void drawStorage( storageSegment *storage, int *position, int operation ){
                 line++;
                 if( line % 4 == 0 )
                     printf(" ");
-                if( line > 8 ){
+                if( line >= 8 ){
                     printf("\n");
-                    line = 1;
+                    line = 0;
                 }
             }
             if( highlight ){

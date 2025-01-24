@@ -30,9 +30,8 @@ int main(int argc, char *argv[]){
     message msg; 
     char c, foo;
     int count = 1;
-    printf("\e[2J");
     say("Waiting for input");
-    printf("\e[H\e[KWaiting for input:");
+    printf("\e[H\e[2KWaiting for input:");
     int cond = 1, res = 0;
     while( cond && (STORAGE_RUNNNING || FACTORY_RUNNING) ){
         if( msgrcv( msgQId, (void *)&msg, sizeof(message), WORKER_CLOSING_MSG_ID, IPC_NOWAIT ) != -1 ){

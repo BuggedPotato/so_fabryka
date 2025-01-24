@@ -130,7 +130,7 @@ int deleteStorage( int shmId, int semId, char *shmAddr, int size ){
     //no raising because theyre deleted right after
     // semRaise(semId, SEM_DELIVERY);
     // semRaise(semId, SEM_STORAGE);
-    //semRaise(semId, SEM_QUEUE);
+    // semRaise(semId, SEM_QUEUE);
     return 0;
 }
 
