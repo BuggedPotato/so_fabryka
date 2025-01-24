@@ -119,18 +119,14 @@ int getStorageSegments( char* shmAddr, storageSegment *storageSegments ){
 
     storageSegments[0].read = (int *)storageSegments[2].end;
     storageSegments[0].write = storageSegments[0].read + 1;
-    // *storageSegments[0].read = 0;
-    // *storageSegments[0].write = 0;
     for( int i = 1; i < 3; i++ ){
         storageSegments[i].read = storageSegments[i-1].write + 1;
         storageSegments[i].write = storageSegments[i].read + 1;
-        // *storageSegments[i].read = 0;
-        // *storageSegments[i].write = 0;
     }
     return 0;
 }
 
-void drawStorage( storageSegment *storage, int *position ){
+void drawStorage( storageSegment *storage, int *position, int operation ){
     time_t n;
     if( time(&n) - LAST_DRAW >= 2 || LAST_DRAW == 0 )
         LAST_DRAW = n;
@@ -138,28 +134,31 @@ void drawStorage( storageSegment *storage, int *position ){
     printf("\e[3;1H");
     char t[10];
     getTime(t);
-    printf("\e[KLast update: %s\n", t);
+    printf("\e[2KLast update: %s\n", t);
     char colours[3][6] = { "\e[36m", "\e[35m", "\e[37m" };
     char def[] = "\e[39m";
     int c = 0;
     for( int i = 0; i < 3; i++ ){
-        int line = 0;
-        printf("\n\e[Kr: %d, w: %d %s %d\n", *storage[i].read, *storage[i].write, program_invocation_short_name, position[i]);
+        int line = 1;
+        printf("\n\e[2Kr: %d, w: %d %s %d\n", *storage[i].read, *storage[i].write, program_invocation_short_name, position[i]);
         for( char *b = storage[i].start; b < storage[i].end; ){
             printf(colours[c]);
             int highlight = 0;
             if( position[i] >= 0 && (b - storage[i].start) == position[i] ){
                 highlight = 1;
-                printf("\e[43m");
+                if( operation )
+                    printf("\e[42m");
+                else
+                    printf("\e[41m");
             }
             for( int j = 0; j < storage[i].elSize; j++, b++ ){
                 printf("%02X ", *b);
-                line += 1;
+                line++;
                 if( line % 4 == 0 )
                     printf(" ");
-                if( line >= 8 ){
+                if( line > 8 ){
                     printf("\n");
-                    line = 0;
+                    line = 1;
                 }
             }
             if( highlight ){

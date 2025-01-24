@@ -65,7 +65,12 @@ int main(int argc, char *argv[]){
 
     deleteStorage( shmId, semId, (void *)shmAddr, STORAGE_TOTAL_SIZE );
     deleteSemaphores(semId);
-    kill( getppid(), SIGUSR1 );
+    msg.type = STORAGE_CLOSING_MSG_ID;
+    if( msgsnd( msgQId, (void *)&msg, sizeof(message), 0 ) == -1 ){
+        perror("error sending message");
+        error("error sending message");
+        exit(errno);
+    }
     say("Shutting down");
 
     return 0;
@@ -103,7 +108,7 @@ int storageSetup(int shmId, char **shmAddr, int size){
 }
 
 int deleteStorage( int shmId, int semId, char *shmAddr, int size ){
-    say("waiting for sems");
+    say("waiting for semaphores");
     if( semLower( semId, SEM_STORAGE ) == -1 ){
         error("No semaphores found");
         exit(EXIT_FAILURE);
@@ -121,7 +126,7 @@ int deleteStorage( int shmId, int semId, char *shmAddr, int size ){
         perror( "error deleting shared memory" );
         exit( errno );
     }
-    say("Successfully deleted storage");
+    success("Successfully deleted storage");
     //no raising because theyre deleted right after
     // semRaise(semId, SEM_DELIVERY);
     // semRaise(semId, SEM_STORAGE);

@@ -45,8 +45,8 @@ int main(int argc, char *argv[]){
     while(STORAGE_EXISTS){
         if( msgrcv( msgQId, &msg, sizeof(message), POLECENIE_2_MSG_ID, IPC_NOWAIT ) != -1 || msgrcv( msgQId, &msg, sizeof(message), MESSAGES_WORKERS, IPC_NOWAIT ) != -1 ){
             say("got message");
-            semRaise(semId, SEM_DELIVERY);
-            semRaise(semId, SEM_STORAGE);
+            // semRaise(semId, SEM_DELIVERY);
+            // semRaise(semId, SEM_STORAGE);
             break;
         }
         #if SPEED != NO_SLEEP
@@ -61,18 +61,21 @@ int main(int argc, char *argv[]){
             #if VERBOSE
                 success("work work");
             #endif
-                // success("work work");
         }
         else if( res == 0 ){
             #if VERBOSE
                 say("No materials!");
             #endif
-                // say("No materials!");
         }
     }
 
-    kill( getppid(), SIGUSR2 );
-    say("job done");
+    msg.type = WORKER_CLOSING_MSG_ID;
+    if( msgsnd( msgQId, (void *)&msg, sizeof(message), 0 ) == -1 ){
+        perror("error sending message");
+        error("error sending message");
+        exit(errno);
+    }
+    success("job done");
     return 0;
 }
 
@@ -90,15 +93,12 @@ int getMaterials( int semId, storageSegment *storage ){
         STORAGE_EXISTS = 0;
         return -1;
     }
-    say("Past sems");
     // check for empty
     for( int i = 0; i < 3; i++ ){
         char value = storage[i].start[*storage[i].read];
         if( !value ){ //empty
-            semRaise(semId, SEM_DELIVERY);
             semRaise(semId, SEM_STORAGE);
             semRaise(semId, SEM_QUEUE);
-            say("EMPTY sems raised");
             return 0;
         }
     }
@@ -120,11 +120,9 @@ int getMaterials( int semId, storageSegment *storage ){
     #endif
     #if VERBOSE
     #endif
-        drawStorage( storage, position );
-    // semRaise(semId, SEM_DELIVERY);
+        drawStorage( storage, position, 0 );
     semRaise(semId, SEM_STORAGE);
     semRaise(semId, SEM_QUEUE);
-    say("sems raised");
 
     return 1;
 }

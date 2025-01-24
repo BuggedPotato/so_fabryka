@@ -109,7 +109,7 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
     #endif
     #if VERBOSE
     #endif
-        drawStorage( fullStorage, position );
+        drawStorage( fullStorage, position, 1 );
     // semRaise(semId, SEM_DELIVERY);
     semRaise(semId, SEM_STORAGE);
     semRaise(semId, SEM_QUEUE);

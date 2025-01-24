@@ -4,6 +4,7 @@
 #include<unistd.h>
 #include<sys/types.h>
 #include<sys/wait.h>
+#include<sys/select.h>
 #include<sys/ipc.h>
 #include<sys/msg.h>
 #include<errno.h>
@@ -11,25 +12,20 @@
 #include "../include/utils.h"
 #include "../include/types.h"
 pid_t PID;
-int msgQId;
 
-int STORAGE_RUNNNING = 1, FACTORY_RUNNING = 1;
+int STORAGE_RUNNNING = 1, FACTORY_RUNNING = WORKERS;
 
 int deleteMessageQueue( int msgQId );
 int sendMessage( int msgQId, message *msg );
 
-void storageCloseHandler( int sig );
-void workerCloseHandler( int sig );
-void quitCheck();
-
 int main(int argc, char *argv[]){
     PID = getpid();
-    
-    signal(SIGUSR1, storageCloseHandler);
-    signal(SIGUSR2, workerCloseHandler);
 
     key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
-    msgQId = getMessageQueue( msgQKey, 0340 );
+    int msgQId = getMessageQueue( msgQKey, 0760 );
+
+    fd_set readfds;
+    struct timeval tv;
 
     message msg; 
     char c, foo;
@@ -37,8 +33,30 @@ int main(int argc, char *argv[]){
     printf("\e[2J");
     say("Waiting for input");
     printf("\e[H\e[KWaiting for input:");
-    int cond = 1;
+    int cond = 1, res = 0;
     while( cond && (STORAGE_RUNNNING || FACTORY_RUNNING) ){
+        if( msgrcv( msgQId, (void *)&msg, sizeof(message), WORKER_CLOSING_MSG_ID, IPC_NOWAIT ) != -1 ){
+            success("Worker confirmed closed");
+            printf("Worker confirmed closed\n");
+            FACTORY_RUNNING--;
+        }
+        if( msgrcv( msgQId, (void *)&msg, sizeof(message), STORAGE_CLOSING_MSG_ID, IPC_NOWAIT ) != -1 ){
+            success("Storage confirmed closed");
+            printf("Storage confirmed closed\n");
+            STORAGE_RUNNNING = 0;
+        }
+        FD_ZERO(&readfds);
+        FD_SET(STDIN_FILENO, &readfds);
+        tv.tv_sec = 0;
+        tv.tv_usec = 500000;
+        if( (res = select(1, &readfds, NULL, NULL, &tv)) == -1){
+            error("select");
+            perror("select");
+            exit(EXIT_FAILURE);
+        }
+        else if( !res || !FD_ISSET( STDIN_FILENO, &readfds ) )
+            continue;
+                
         c = fgetc(stdin);
         while ((foo = getchar()) != '\n' && foo != EOF);
         count = 1;
@@ -95,27 +113,4 @@ int deleteMessageQueue( int id ){
     }
     say("Message queue successfully deleted");
     return 0;
-}
-
-void storageCloseHandler( int sig ){
-    say("Storage closing confirmed");
-    printf("Storage closing confirmed\n");
-    STORAGE_RUNNNING = 0;
-    quitCheck();
-}
-
-void workerCloseHandler( int sig ){
-    say("Worker closing confirmed");
-    printf("Worker closing confirmed\n");
-    FACTORY_RUNNING = 0;
-    quitCheck();
-}
-
-void quitCheck(){
-    if( !(STORAGE_RUNNNING || FACTORY_RUNNING) ){
-        deleteMessageQueue(msgQId);
-        say("Shutting down...");
-        printf("Shutting down...\n");
-        exit(EXIT_SUCCESS);
-    }
 }
