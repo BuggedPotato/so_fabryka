@@ -94,14 +94,12 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
         printf( "access     : r - %d, w - %d\n", *storage->read, *storage->write );
     #endif
     // deliver
-    // for( int i = 0; i < 3; i++ ){
-        int position[3] = {-1, -1, -1};
-        position[el] = *(storage->write);
-        memset( (void *)(storage->start + *(storage->write)), 1, storage->elSize );
-        *(storage->write) += storage->elSize;
-        if( storage->start + *(storage->write) >= storage->end )
-            *(storage->write) = 0;
-    // }
+    int position[3] = {-1, -1, -1};
+    position[el] = *(storage->write);
+    memset( (void *)(storage->start + *(storage->write)), 1, storage->elSize );
+    *(storage->write) += storage->elSize;
+    if( storage->start + *(storage->write) >= storage->end )
+        *(storage->write) = 0;
 
     #if DEBUG
         printf( "delivery data: %p - %p\n", storage->start, storage->end );
@@ -110,7 +108,6 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
     #if VERBOSE
     #endif
         drawStorage( fullStorage, position, 1 );
-    // semRaise(semId, SEM_DELIVERY);
     semRaise(semId, SEM_STORAGE);
     semRaise(semId, SEM_QUEUE);
 

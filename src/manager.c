@@ -84,11 +84,17 @@ int main(int argc, char *argv[]){
             }
         }
     }
-
-    if( execl( "./director", "director", NULL )  == -1){
-        perror("error running director process");
-        exit(errno);
-    }
+    // pid_t directorPID;
+    // if( (directorPID = fork()) == -1 ){
+    //     perror("director fork error");
+    //     exit(errno);
+    // }
+    // else if( directorPID == 0 ){
+        if( execl( "./director", "director", NULL )  == -1){
+            perror("error running director process");
+            exit(errno);
+        }
+    // }
     say( "Done! Shutting down..." );
 
     return 0;
