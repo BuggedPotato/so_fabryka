@@ -29,7 +29,7 @@ int main(int argc, char *argv[]){
     sa.sa_flags = SA_NOCLDWAIT;
     sigaction( SIGCHLD, &sa, NULL );
 
-    key_t msgQKey = ftok( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
+    key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     int msgQId = getMessageQueue( msgQKey, 0760 );
 
     fd_set readfds;

@@ -33,7 +33,7 @@ time_t LAST_DRAW = 0;
 int main(int argc, char *argv[]){
     PID = getpid();
 
-    key_t shmKey = ftok( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
+    key_t shmKey = getKey( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
     char *shmAddr = NULL;
     int shmId = createStorage( shmKey, STORAGE_TOTAL_SIZE );
     storageSegment segments[3];
@@ -42,7 +42,7 @@ int main(int argc, char *argv[]){
         exit(EXIT_FAILURE);
     }
 
-    key_t semKey = ftok( SEM_KEY_STR, SEM_KEY_CHAR );
+    key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
     int semId = getSemaphores( semKey, 3, 0600 );
     semaphoresSetup( semId );
     
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]){
     if( kill( getppid(), SIGCONT ) == -1)
         error("error sending continue");
 
-    key_t msgQKey = ftok( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
+    key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     int msgQId = getMessageQueue( msgQKey, 0700 );
 
     message msg;
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]){
 *
 * Function:			allocate shared memory with shmget
 *
-* Arguments:		key - shm key (from ftok),
+* Arguments:		key - shm key (from getKey),
                     size - shm size in bytes
 *
 * Return:			id of created shared memory, exit on error

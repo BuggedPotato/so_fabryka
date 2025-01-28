@@ -32,13 +32,13 @@ int main(int argc, char *argv[]){
     }
     el--;
 
-    key_t shmKey = ftok( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
+    key_t shmKey = getKey( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
     int shmId = getStorage( shmKey );
     storageSegment storage[3];
     char *shmAddr = attachStorage( shmId );
     getStorageSegments( shmAddr, storage );
 
-    key_t semKey = ftok( SEM_KEY_STR, SEM_KEY_CHAR );
+    key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
     int semId = getSemaphores( semKey, 3, 0600 );
 
     srand(PID);

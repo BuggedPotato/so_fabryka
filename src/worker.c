@@ -24,18 +24,18 @@ int main(int argc, char *argv[]){
     PID = getpid();
 
     say("Started");
-    key_t shmKey = ftok( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
+    key_t shmKey = getKey( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
     int shmId = getStorage( shmKey );
     char *shmAddr = attachStorage(shmId);
     storageSegment storage[3];
     getStorageSegments( shmAddr, storage );
     say("Worker successfully attached storage");
 
-    key_t semKey = ftok( SEM_KEY_STR, SEM_KEY_CHAR );
+    key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
     int semId = getSemaphores( semKey, 3, 0600 );
     say("Worker successfully attached semaphores");
 
-    key_t msgQKey = ftok( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
+    key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     int msgQId = getMessageQueue( msgQKey, 0700 );
     say("Worker successfully attached message queue");
 

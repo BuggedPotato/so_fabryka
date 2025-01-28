@@ -20,6 +20,15 @@
 extern char *program_invocation_short_name;
 void getTime( char *dest );
 
+key_t getKey( char* path, int id ){
+    key_t res = ftok(path, id);
+    if( res == -1 ){
+        perror("error getting key");
+        exit(errno);
+    }
+    return res;
+}
+
 /*
 * Function Name:	logPrint
 *
