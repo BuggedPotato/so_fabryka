@@ -76,7 +76,7 @@ int main(int argc, char *argv[]){
 
         // draw storage to terminal if enough time has passed
         time_t n;
-        if( time(&n) - LAST_DRAW >= 0 || LAST_DRAW == 0 ){
+        if( time(&n) - LAST_DRAW >= 1 || LAST_DRAW == 0 ){
             LAST_DRAW = n;
             semLower(semId, SEM_STORAGE);
             drawStorageDiff( shmCopy, shmAddr, STORAGE_TOTAL_SIZE );

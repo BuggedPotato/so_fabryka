@@ -16,7 +16,7 @@
 pid_t PID;
 int STORAGE_EXISTS = 1;
 
-int deliver( int semId, storageSegment *storage, int el );
+int deliver( int semId, storageSegment *storage );
 
 int main(int argc, char *argv[]){
 

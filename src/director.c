@@ -137,7 +137,7 @@ int sendMessage( int id, message *msg ){
                             error("No such message in the queue!");
                         }
                         else
-                            perror("")
+                            perror("");
                         exit(errno);
                     }
                     #if DEBUG

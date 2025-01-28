@@ -138,7 +138,7 @@ int getMessageQueue( key_t key, int perms ){
                     storageSegments - array of structs to be set
 * Return:			0->success
 */
-void getStorageSegments( char* shmAddr, storageSegment *storageSegments ){
+int getStorageSegments( char* shmAddr, storageSegment *storageSegments ){
     int baseSize = STORAGE_COUNT;
     storageSegments[0].start = shmAddr;
     storageSegments[0].end = storageSegments[0].start + baseSize * SIZE_X;
