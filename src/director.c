@@ -14,6 +14,7 @@
 pid_t PID;
 
 int STORAGE_RUNNNING = 1, FACTORY_RUNNING = WORKERS;
+int POLECENIA_COUNT[4] = {0,0,0,0};
 
 int deleteMessageQueue( int msgQId );
 int sendMessage( int msgQId, message *msg );
@@ -25,6 +26,7 @@ void handle(int sig){
 int main(int argc, char *argv[]){
     PID = getpid();
     say("Started");
+    // ignoring SIGCHLD to not have zombies
     struct sigaction sa;
     sa.sa_handler = SIG_DFL;
     sa.sa_flags = SA_NOCLDWAIT;
@@ -44,16 +46,17 @@ int main(int argc, char *argv[]){
     printf("\e[H\e[2KWaiting for input:");
     int cond = 1, res = 0;
     while( cond && (STORAGE_RUNNNING || FACTORY_RUNNING) ){
-        if( msgrcv( msgQId, (void *)&msg, sizeof(message), WORKER_CLOSING_MSG_ID, IPC_NOWAIT ) != -1 ){
+        if( msgrcv( msgQId, (void *)&msg, MSG_TEXT_SIZE, WORKER_CLOSING_MSG_ID, IPC_NOWAIT ) != -1 ){
             success("Worker confirmed closed");
             printf("Worker confirmed closed\n");
             FACTORY_RUNNING--;
         }
-        if( msgrcv( msgQId, (void *)&msg, sizeof(message), STORAGE_CLOSING_MSG_ID, IPC_NOWAIT ) != -1 ){
+        if( msgrcv( msgQId, (void *)&msg, MSG_TEXT_SIZE, STORAGE_CLOSING_MSG_ID, IPC_NOWAIT ) != -1 ){
             success("Storage confirmed closed");
             printf("Storage confirmed closed\n");
             STORAGE_RUNNNING = 0;
         }
+        // periodically check for input on stdin if none skip
         FD_ZERO(&readfds);
         FD_SET(STDIN_FILENO, &readfds);
         tv.tv_sec = 0;
@@ -66,6 +69,7 @@ int main(int argc, char *argv[]){
         else if( !res || !FD_ISSET( STDIN_FILENO, &readfds ) )
             continue;
                 
+        // send message based on input
         c = fgetc(stdin);
         while ((foo = getchar()) != '\n' && foo != EOF);
         count = 1;
@@ -73,18 +77,22 @@ int main(int argc, char *argv[]){
         {
             case '1':
                 msg.type = POLECENIE_1_MSG_ID;
+                POLECENIA_COUNT[0]++;
                 break;
             case '2':
                 msg.type = POLECENIE_2_MSG_ID;
                 count = WORKERS;
+                POLECENIA_COUNT[1] += WORKERS;
                 break;
             case '3':
                 msg.type = POLECENIE_3_MSG_ID;
                 count = WORKERS + 1;
+                POLECENIA_COUNT[2] += WORKERS + 1;
                 break;
             case '4':
                 msg.type = POLECENIE_4_MSG_ID;
                 count = WORKERS + 1;
+                POLECENIA_COUNT[3] += WORKERS + 1;
                 break;
             case '5':
                 warning("Quitting");
@@ -102,15 +110,39 @@ int main(int argc, char *argv[]){
         say("Message sent");
         printf("\e[2J\e[H\e[KMessage sent\n");
     }
-    deleteMessageQueue(msgQId);
 
+    deleteMessageQueue(msgQId);
     return 0;
 }
 
 int sendMessage( int id, message *msg ){
-    if( msgsnd( id, (void *)msg, sizeof(message), 0 ) == -1 ){
-        perror("error sending message");
-        exit(errno);
+    if( msgsnd( id, (void *)msg, MSG_TEXT_SIZE, IPC_NOWAIT ) == -1 ){
+        if( errno == EAGAIN ){
+            // msgq is full
+            int limit[4] = {1, WORKERS, WORKERS+1, WORKERS+1};
+            int msgIds[4] = {POLECENIE_1_MSG_ID, POLECENIE_2_MSG_ID, POLECENIE_3_MSG_ID, POLECENIE_4_MSG_ID};
+            for( int i = 0; i < 4; i++ ){
+                while(POLECENIA_COUNT[i] > limit[i]){
+                    message foo;
+                    if( msgrcv( id, (void *)&foo, MSG_TEXT_SIZE, msgIds[i], IPC_NOWAIT ) != -1 ){
+                        if( errno == ENOMSG ){
+                            error("No such message in the queue!");
+                            exit(errno);
+                        }
+                    }
+                    #if DEBUG
+                        fprintf(stderr, "Queue full - removed unnecessary message with id %d\n", msgIds[i]);
+                    #endif
+                    POLECENIA_COUNT[i]--;
+                }
+            }
+            //try again
+            sendMessage(id, msg);
+        }
+        else{
+            perror("error sending message");
+            exit(errno);
+        }
     }
     return 0;
 }

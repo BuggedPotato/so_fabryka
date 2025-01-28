@@ -24,8 +24,11 @@ int saveStorageFile( char *fileName, char *src, char *end );
 int semaphoresSetup( int semId );
 int deleteSemaphores( int semId );
 
+int drawStorageDiff( char* last, char* curr, int size);
+
 pid_t PID;
 int SAVE_TO_FILE = 0;
+time_t LAST_DRAW = 0;
 
 int main(int argc, char *argv[]){
     PID = getpid();
@@ -54,11 +57,29 @@ int main(int argc, char *argv[]){
 
     message msg;
     say("Entering standby mode - awaiting messages...");
-    if( msgrcv( msgQId, (void *)&msg, sizeof(message), MESSAGES_STORAGE, 0 ) == -1 ){
-        perror("error receiving a message");
-        exit(EXIT_FAILURE);
+    // shm snapshot for drawing
+    char shmCopy[STORAGE_TOTAL_SIZE];
+    semLower(semId, SEM_STORAGE);
+    memcpy( shmCopy, shmAddr, STORAGE_TOTAL_SIZE );
+    semRaise(semId, SEM_STORAGE);
+    while( 1 ){
+        int res = msgrcv( msgQId, (void *)&msg, MSG_TEXT_SIZE, MESSAGES_STORAGE, IPC_NOWAIT );
+        if( res == -1 ){
+            if( errno != ENOMSG ){
+                perror("error receiving a message");
+                exit(EXIT_FAILURE);
+            }
+        }
+        else{
+            break;
+        }
+        semLower(semId, SEM_STORAGE);
+        res = drawStorageDiff( shmCopy, shmAddr, STORAGE_TOTAL_SIZE );
+        if( res )
+            memcpy( shmCopy, shmAddr, STORAGE_TOTAL_SIZE );
+        semRaise(semId, SEM_STORAGE);
     }
-    // here ppid is director
+    
     say( "Got a message!" );
     if( msg.type == POLECENIE_3_MSG_ID )
         SAVE_TO_FILE = 1;
@@ -66,7 +87,7 @@ int main(int argc, char *argv[]){
     deleteStorage( shmId, semId, (void *)shmAddr, STORAGE_TOTAL_SIZE );
     deleteSemaphores(semId);
     msg.type = STORAGE_CLOSING_MSG_ID;
-    if( msgsnd( msgQId, (void *)&msg, sizeof(message), 0 ) == -1 ){
+    if( msgsnd( msgQId, (void *)&msg, MSG_TEXT_SIZE, 0 ) == -1 ){
         perror("error sending message");
         error("error sending message");
         exit(errno);
@@ -114,9 +135,7 @@ int deleteStorage( int shmId, int semId, char *shmAddr, int size ){
         exit(EXIT_FAILURE);
     }
     say("storage past sems");
-    // say("sem deliver");
-    // semLower( semId, SEM_STORAGE );
-    // say("sem workers");
+
     saveStorageFile( STORAGE_FILENAME, shmAddr, shmAddr + size );
     if( shmdt( (void *)shmAddr ) == -1 ){
         perror("error detaching shared memory");
@@ -128,9 +147,6 @@ int deleteStorage( int shmId, int semId, char *shmAddr, int size ){
     }
     success("Successfully deleted storage");
     //no raising because theyre deleted right after
-    // semRaise(semId, SEM_DELIVERY);
-    // semRaise(semId, SEM_STORAGE);
-    // semRaise(semId, SEM_QUEUE);
     return 0;
 }
 
@@ -203,4 +219,65 @@ int saveStorageFile( char *fileName, char *src, char *end ){
     fclose( file );
     say("File saved successfully");
     return 0;
+}
+
+int drawStorageDiff( char* last, char* curr, int size){
+    time_t n;
+    if( time(&n) - LAST_DRAW >= 0.5 || LAST_DRAW == 0 )
+        LAST_DRAW = n;
+    else 
+        return 0;
+
+    printf("\e[2;1H");
+    char t[10];
+    getTime(t);
+    printf("\e[0JLast update: %s\n", t);
+    
+    char colours[3][6] = { "\e[36m", "\e[35m", "\e[37m" };
+    char def[] = "\e[39m";
+    int c = 0;
+
+    int line = 0, highlight = 0;
+    int indexes = size - 6 * sizeof(int);
+    int elSizes[3] = {SIZE_X, SIZE_Y, SIZE_Z};
+    int el = 0;
+    int segment = 0;
+    for( int j = 0; j < 3; j++ ){
+        printf("read: %d, write: %d\n", curr[indexes+2*j], curr[indexes+2*j+1]);
+    }
+    for( int i = 0; i < indexes; i++ ){
+        if( i % elSizes[segment] == 0 ){
+            printf(colours[c]);
+            c++;
+            if( c >= 3 ) c = 0;
+        }
+        el++;
+
+        if( !last[i] && curr[i] ){
+            // green
+            printf("\e[42m");
+        }
+        else if( last[i] && !curr[i] ){
+            // red
+            printf("\e[41m");
+        }
+        printf("%02X ", curr[i]);
+        printf("\e[49m");
+
+        line++;
+        if( line % 4 == 0 )
+            printf(" ");
+        if( line >= 8 ){
+            printf("\n");
+            line = 0;
+        }
+
+        if( el == elSizes[segment] * STORAGE_COUNT ){
+            printf("\n");
+            segment++;
+            el = 0;
+        }
+    }
+    printf(def);
+    return 1;
 }

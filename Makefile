@@ -17,5 +17,5 @@ utils.o: $(srcDir)/utils.c
 	gcc -c $(srcDir)/utils.c
 clean_log:
 	rm ./logs/*.log
-clean:
+clean: clean_log
 	rm *.o

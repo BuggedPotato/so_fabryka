@@ -43,6 +43,7 @@ int main(int argc, char *argv[]){
     srand(PID);
     int res = 0;
     while(STORAGE_EXISTS){
+        // TODO
         if( msgrcv( msgQId, &msg, sizeof(message), POLECENIE_2_MSG_ID, IPC_NOWAIT ) != -1 || msgrcv( msgQId, &msg, sizeof(message), MESSAGES_WORKERS, IPC_NOWAIT ) != -1 ){
             say("got message");
             // semRaise(semId, SEM_DELIVERY);
@@ -70,7 +71,7 @@ int main(int argc, char *argv[]){
     }
 
     msg.type = WORKER_CLOSING_MSG_ID;
-    if( msgsnd( msgQId, (void *)&msg, sizeof(message), 0 ) == -1 ){
+    if( msgsnd( msgQId, (void *)&msg, MSG_TEXT_SIZE, 0 ) == -1 ){
         perror("error sending message");
         error("error sending message");
         exit(errno);
@@ -84,8 +85,6 @@ int getMaterials( int semId, storageSegment *storage ){
     if(semLower(semId, SEM_QUEUE) == -1){
         warning("No queue detected - closing");
         STORAGE_EXISTS = 0;
-        // semRaise(semId, SEM_DELIVERY);
-        // semRaise(semId, SEM_STORAGE);
         return -1;
     }
     if( semLower( semId, SEM_STORAGE ) ){
@@ -118,9 +117,6 @@ int getMaterials( int semId, storageSegment *storage ){
             printf( "access     [%d]: r -%d, w - %d\n", i, *storage[i].read, *storage[i].write );
         }
     #endif
-    #if VERBOSE
-    #endif
-        drawStorage( storage, position, 0 );
     semRaise(semId, SEM_STORAGE);
     semRaise(semId, SEM_QUEUE);
 

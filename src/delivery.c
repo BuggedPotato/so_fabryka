@@ -82,7 +82,6 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
     // check for full
     char value = storage->start[*(storage->write)];
     if( value ){ //full
-        // semRaise(semId, SEM_DELIVERY);
         semRaise(semId, SEM_STORAGE);
         semRaise(semId, SEM_QUEUE);
         return 0;
@@ -105,9 +104,6 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
         printf( "delivery data: %p - %p\n", storage->start, storage->end );
         printf( "access     : r - %d, w - %d\n", *storage->read, *storage->write );
     #endif
-    #if VERBOSE
-    #endif
-        drawStorage( fullStorage, position, 1 );
     semRaise(semId, SEM_STORAGE);
     semRaise(semId, SEM_QUEUE);
 
