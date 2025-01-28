@@ -318,15 +318,13 @@ int drawStorageDiff( char* last, char* curr, int size){
     char def[] = "\e[39m"; // default text colour
     int c = 0;
 
-    int line = 0, highlight = 0;
-    int indexes = size - 6 * sizeof(int); // index of read/write fields in shm
+    int line = 0;
+    int indexStart = size - 6 * sizeof(int);
+    int *indexes = (int *)(curr + indexStart);
     int elSizes[3] = {SIZE_X, SIZE_Y, SIZE_Z};
     int el = 0;
     int segment = 0;
-    for( int j = 0; j < 3; j++ ){
-        printf("read: %d, write: %d\n", curr[indexes+2*j], curr[indexes+2*j+1]);
-    }
-    for( int i = 0; i < indexes; i++ ){
+    for( int i = 0; i < indexStart ; i++ ){
         if( i % elSizes[segment] == 0 ){
             printf(colours[c]);
             c++;
@@ -354,6 +352,7 @@ int drawStorageDiff( char* last, char* curr, int size){
         }
         // seperates segments
         if( el == elSizes[segment] * STORAGE_COUNT ){
+            printf("read: %d, write: %d\n", *(indexes+2*segment), *(indexes+2*segment+1));
             printf("\n");
             segment++;
             el = 0;
