@@ -74,22 +74,22 @@ int main(int argc, char *argv[]){
         {
             case '1':
                 msg.type = POLECENIE_1_MSG_ID;
-                POLECENIA_COUNT[0]++;
+                // POLECENIA_COUNT[0]++;
                 break;
             case '2':
                 msg.type = POLECENIE_2_MSG_ID;
                 count = WORKERS;
-                POLECENIA_COUNT[1] += WORKERS;
+                // POLECENIA_COUNT[1] += WORKERS;
                 break;
             case '3':
                 msg.type = POLECENIE_3_MSG_ID;
                 count = WORKERS + 1;
-                POLECENIA_COUNT[2] += WORKERS + 1;
+                // POLECENIA_COUNT[2] += WORKERS + 1;
                 break;
             case '4':
                 msg.type = POLECENIE_4_MSG_ID;
                 count = WORKERS + 1;
-                POLECENIA_COUNT[3] += WORKERS + 1;
+                // POLECENIA_COUNT[3] += WORKERS + 1;
                 break;
             case '5':
                 warning("Quitting");
@@ -131,14 +131,19 @@ int sendMessage( int id, message *msg ){
             // check limits for each message id and remove unwanted
             for( int i = 0; i < 4; i++ ){
                 while(POLECENIA_COUNT[i] > limit[i]){
+                    fprintf(stderr, "%d\n", POLECENIA_COUNT[i]);
                     message foo;
-                    if( msgrcv( id, (void *)&foo, MSG_TEXT_SIZE, msgIds[i], IPC_NOWAIT ) != -1 ){
+                    if( msgrcv( id, (void *)&foo, MSG_TEXT_SIZE, msgIds[i], IPC_NOWAIT ) == -1 ){
                         if( errno == ENOMSG ){
                             error("No such message in the queue!");
+                            POLECENIA_COUNT[i] = 0;
+                            break;
                         }
-                        else
+                        else{
                             perror("");
-                        exit(errno);
+                            fprintf(stderr, "%d\n", errno);
+                            exit(errno);
+                        }
                     }
                     #if DEBUG
                         fprintf(stderr, "Queue full - removed unnecessary message with id %d\n", msgIds[i]);
@@ -154,6 +159,9 @@ int sendMessage( int id, message *msg ){
             exit(errno);
         }
     }
+    int index[5] = { -1, 2, 3, 0, 1};
+    POLECENIA_COUNT[index[msg->type]]++;
+    // error("end");
     return 0;
 }
 

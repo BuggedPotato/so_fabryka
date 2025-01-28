@@ -57,7 +57,7 @@ void error( char *text ){
 }
 // refer to logPrint
 void success( char *text ){
-    logPrint("[92m[OK]\e[0m", text);
+    logPrint("[32m[OK]\e[0m", text);
 }
 
 /*
