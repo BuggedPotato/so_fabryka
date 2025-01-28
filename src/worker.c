@@ -24,18 +24,18 @@ int main(int argc, char *argv[]){
     PID = getpid();
 
     say("Started");
-    key_t shmKey = getKey( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
+    key_t shmKey = ftok( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
     int shmId = getStorage( shmKey );
     char *shmAddr = attachStorage(shmId);
     storageSegment storage[3];
     getStorageSegments( shmAddr, storage );
     say("Worker successfully attached storage");
 
-    key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
+    key_t semKey = ftok( SEM_KEY_STR, SEM_KEY_CHAR );
     int semId = getSemaphores( semKey, 3, 0600 );
     say("Worker successfully attached semaphores");
 
-    key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
+    key_t msgQKey = ftok( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     int msgQId = getMessageQueue( msgQKey, 0700 );
     say("Worker successfully attached message queue");
 
@@ -43,11 +43,9 @@ int main(int argc, char *argv[]){
     srand(PID);
     int res = 0;
     while(STORAGE_EXISTS){
-        // TODO
+        // TODO?
         if( msgrcv( msgQId, &msg, sizeof(message), POLECENIE_2_MSG_ID, IPC_NOWAIT ) != -1 || msgrcv( msgQId, &msg, sizeof(message), MESSAGES_WORKERS, IPC_NOWAIT ) != -1 ){
             say("got message");
-            // semRaise(semId, SEM_DELIVERY);
-            // semRaise(semId, SEM_STORAGE);
             break;
         }
         #if SPEED != NO_SLEEP
@@ -80,7 +78,16 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-// 1 -> success, 0 -> failure
+/*
+* Function Name:	getMaterials
+*
+* Function:			attempts to take materials from storage
+*
+* Arguments:		semId - semaphore set id,
+                    storage - storage segment struct array
+*
+* Return:			1->success, 0->at least one segment empty, -1->semaphore error 
+*/
 int getMaterials( int semId, storageSegment *storage ){
     if(semLower(semId, SEM_QUEUE) == -1){
         warning("No queue detected - closing");
@@ -123,6 +130,8 @@ int getMaterials( int semId, storageSegment *storage ){
     return 1;
 }
 
+
+// dummy function to simulate working 
 int work(){
     return 0;
 }

@@ -14,14 +14,11 @@
 pid_t PID;
 
 int STORAGE_RUNNNING = 1, FACTORY_RUNNING = WORKERS;
+// how many messages of each type were sent
 int POLECENIA_COUNT[4] = {0,0,0,0};
 
 int deleteMessageQueue( int msgQId );
 int sendMessage( int msgQId, message *msg );
-
-void handle(int sig){
-    printf("signal: %d\n", sig);
-}
 
 int main(int argc, char *argv[]){
     PID = getpid();
@@ -32,7 +29,7 @@ int main(int argc, char *argv[]){
     sa.sa_flags = SA_NOCLDWAIT;
     sigaction( SIGCHLD, &sa, NULL );
 
-    key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
+    key_t msgQKey = ftok( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     int msgQId = getMessageQueue( msgQKey, 0760 );
 
     fd_set readfds;
@@ -114,21 +111,34 @@ int main(int argc, char *argv[]){
     deleteMessageQueue(msgQId);
     return 0;
 }
-
+/*
+* Function Name:	sendMessage
+*
+* Function:			send a message to message queue while checking for overflow and 
+                    removing unnecessary messages from queue
+*
+* Arguments:		id - message queue id,
+                    msg - pointer to message object
+*
+* Return:			0->success, othewise exit with errno
+*/
 int sendMessage( int id, message *msg ){
     if( msgsnd( id, (void *)msg, MSG_TEXT_SIZE, IPC_NOWAIT ) == -1 ){
         if( errno == EAGAIN ){
             // msgq is full
             int limit[4] = {1, WORKERS, WORKERS+1, WORKERS+1};
             int msgIds[4] = {POLECENIE_1_MSG_ID, POLECENIE_2_MSG_ID, POLECENIE_3_MSG_ID, POLECENIE_4_MSG_ID};
+            // check limits for each message id and remove unwanted
             for( int i = 0; i < 4; i++ ){
                 while(POLECENIA_COUNT[i] > limit[i]){
                     message foo;
                     if( msgrcv( id, (void *)&foo, MSG_TEXT_SIZE, msgIds[i], IPC_NOWAIT ) != -1 ){
                         if( errno == ENOMSG ){
                             error("No such message in the queue!");
-                            exit(errno);
                         }
+                        else
+                            perror("")
+                        exit(errno);
                     }
                     #if DEBUG
                         fprintf(stderr, "Queue full - removed unnecessary message with id %d\n", msgIds[i]);
@@ -136,7 +146,7 @@ int sendMessage( int id, message *msg ){
                     POLECENIA_COUNT[i]--;
                 }
             }
-            //try again
+            //try sending again
             sendMessage(id, msg);
         }
         else{
@@ -147,6 +157,15 @@ int sendMessage( int id, message *msg ){
     return 0;
 }
 
+/*
+* Function Name:	deleteMessageQueue
+*
+* Function:			deletes message queue
+*
+* Arguments:		id - message queue id,
+*
+* Return:			0->succes, othewise exit with errno
+*/
 int deleteMessageQueue( int id ){
     if( msgctl( id, IPC_RMID, NULL ) == -1 ){
         perror("error deleting message queue");

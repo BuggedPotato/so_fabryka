@@ -32,13 +32,13 @@ int main(int argc, char *argv[]){
     }
     el--;
 
-    key_t shmKey = getKey( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
+    key_t shmKey = ftok( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
     int shmId = getStorage( shmKey );
     storageSegment storage[3];
     char *shmAddr = attachStorage( shmId );
     getStorageSegments( shmAddr, storage );
 
-    key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
+    key_t semKey = ftok( SEM_KEY_STR, SEM_KEY_CHAR );
     int semId = getSemaphores( semKey, 3, 0600 );
 
     srand(PID);
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]){
                 usleep(200+rand() % 1000);
             #endif
         #endif
-        res = deliver( semId, storage, el );
+        res = deliver( semId, &storage[el] );
         #if VERBOSE
             if( res == 0 ){
                 say( "Storage full - skipping" );
@@ -66,8 +66,17 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-// 1 -> success, 0 -> failure
-int deliver( int semId, storageSegment *fullStorage, int el ){
+/*
+* Function Name:	deliver
+*
+* Function:			perform delivery to storage
+*
+* Arguments:		semId - semaphore set id,
+                    storage - pointer to storageSegment object for delivered element
+*
+* Return:			1-> success, 0->failure, -1->error
+*/
+int deliver( int semId, storageSegment *storage ){
     if( semLower(semId, SEM_QUEUE) == -1 ){
         warning("No queue detected - closing");
         STORAGE_EXISTS = 0;
@@ -78,7 +87,6 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
         STORAGE_EXISTS = 0;
         return -1;
     }
-    storageSegment *storage = &fullStorage[el];
     // check for full
     char value = storage->start[*(storage->write)];
     if( value ){ //full
@@ -93,8 +101,6 @@ int deliver( int semId, storageSegment *fullStorage, int el ){
         printf( "access     : r - %d, w - %d\n", *storage->read, *storage->write );
     #endif
     // deliver
-    int position[3] = {-1, -1, -1};
-    position[el] = *(storage->write);
     memset( (void *)(storage->start + *(storage->write)), 1, storage->elSize );
     *(storage->write) += storage->elSize;
     if( storage->start + *(storage->write) >= storage->end )

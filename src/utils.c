@@ -20,40 +20,42 @@
 extern char *program_invocation_short_name;
 void getTime( char *dest );
 
-int fileExists(char *fileName){
-    struct stat buffer;
-    return (stat(fileName, &buffer) == 0);
+/*
+* Function Name:	logPrint
+*
+* Function:			printsd formatted message with time, pid 
+                    and special label to stderr 
+*
+* Arguments:		label - extra label to add to message (e.g. [WARNING])
+                    text - message string
+*/
+void logPrint( char* label, char* text ){
+    char t[9];
+    getTime( t );
+    fprintf(stderr, "[%s][%s %d]%s %s\n", t, program_invocation_short_name, getpid(), label, text);
 }
-
-key_t getKey( char* path, int id ){
-    key_t key = ftok( path, id );
-    return key;
-}
-
+// refer to logPrint
 void say( char *text ){
-    char t[9];
-    getTime( t );
-    fprintf(stderr, "[%s][%s %d] %s\n", t, program_invocation_short_name, getpid(), text);
+    logPrint("", text);
 }
-
+// refer to logPrint
 void warning( char *text ){
-    char t[9];
-    getTime( t );
-    fprintf(stderr, "[%s][%s %d]\e[33m[WARNING]\e[0m %s\n", t, program_invocation_short_name, getpid(), text);
+    logPrint("\e[33m[WARNING]\e[0m", text);
 }
-
+// refer to logPrint
 void error( char *text ){
-    char t[9];
-    getTime( t );
-    fprintf(stderr, "[%s][%s %d]\e[31m[ERROR]\e[0m %s\n", t, program_invocation_short_name, getpid(), text);
+    logPrint("\e[31m[ERROR]\e[0m", text);
 }
-
+// refer to logPrint
 void success( char *text ){
-    char t[9];
-    getTime( t );
-    fprintf(stderr, "[%s][%s %d]\e[92m[OK]\e[0m %s\n", t, program_invocation_short_name, getpid(), text);
+    logPrint("[92m[OK]\e[0m", text);
 }
 
+/*
+* Function Name:	getTime
+* Function:			puts formatted time (hours:min:sec) string into dest
+* Arguments:		dest - destination for time string
+*/
 void getTime( char *dest ){
     time_t tmp;
     time(&tmp);
@@ -61,6 +63,12 @@ void getTime( char *dest ){
     sprintf( dest, "%02d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
 }
 
+/*
+* Function Name:	getStorage
+* Function:			get shared memory id for key
+* Arguments:		key - shm key
+* Return:			obtained id on success, exit on failure/error
+*/
 int getStorage(key_t key){
     int shmId = shmget( key, 0, IPC_CREAT|0600 );
     if( shmId == -1 ){
@@ -71,6 +79,12 @@ int getStorage(key_t key){
     return shmId;
 }
 
+/*
+* Function Name:	attachStorage
+* Function:			attaches shared memory
+* Arguments:		id - shm id
+* Return:			obtained shm address, exit on failure/error
+*/
 char* attachStorage( int id ){
     void *tmpPtr;
     tmpPtr = shmat( id, NULL, 0 );
@@ -82,8 +96,16 @@ char* attachStorage( int id ){
     return (char *)tmpPtr;
 }
 
-int getSemaphores( key_t key, int count, int perms ){    printf("\e[2J");
-
+/*
+* Function Name:	getSemaphores
+* Function:			returns semaphore set id for key with given permissions,
+                    can create a new set or attach to existing
+* Arguments:		key - semaphore set key,
+                    count - semaphores count,
+                    perms - permissions
+* Return:			obtained semaphore set id, exit on failure/error
+*/
+int getSemaphores( key_t key, int count, int perms ){
     int semId;
     if( (semId = semget(key, count, IPC_CREAT|perms)) == -1 ){
         error("");
@@ -93,6 +115,13 @@ int getSemaphores( key_t key, int count, int perms ){    printf("\e[2J");
     return semId;
 }
 
+/*
+* Function Name:	getMessageQueue
+* Function:			returns message queue id for key with given permissions
+* Arguments:		key - semaphore set key,
+                    perms - permissions
+* Return:			obtained message queue id, exit on failure/error
+*/
 int getMessageQueue( key_t key, int perms ){
     int msgQId = msgget( key, IPC_CREAT|perms );
     if( msgQId == -1 ){
@@ -102,11 +131,14 @@ int getMessageQueue( key_t key, int perms ){
     return msgQId;
 }
 
-int processExists( pid_t pid ){
-    return kill( pid, 0 ) == 0;
-}
-
-int getStorageSegments( char* shmAddr, storageSegment *storageSegments ){
+/*
+* Function Name:	getStorageSegments
+* Function:			structs to represent storage logic design
+* Arguments:		shmAddr - shared memory address,
+                    storageSegments - array of structs to be set
+* Return:			0->success
+*/
+void getStorageSegments( char* shmAddr, storageSegment *storageSegments ){
     int baseSize = STORAGE_COUNT;
     storageSegments[0].start = shmAddr;
     storageSegments[0].end = storageSegments[0].start + baseSize * SIZE_X;
@@ -127,11 +159,17 @@ int getStorageSegments( char* shmAddr, storageSegment *storageSegments ){
     return 0;
 }
 
+/*
+  /// NOT IN USE ///
+* Function Name:	drawStorage
+* Function:			draws storage visualisation to terminal with 
+                    coloured highlighting
+* Arguments:		storage - array of structs to read from,
+                    position - array with changed index for each storage segment,
+                    operation - 1->added, 0->removed (colouring)
+*/
 void drawStorage( storageSegment *storage, int *position, int operation ){
-    // time_t n;
-    // if( time(&n) - LAST_DRAW >= 2 || LAST_DRAW == 0 )
-    //     LAST_DRAW = n;
-    // else return;
+
     printf("\e[2;1H");
     char t[10];
     getTime(t);

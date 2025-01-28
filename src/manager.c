@@ -21,16 +21,18 @@ void foo(int sig){
 int main(int argc, char *argv[]){
     signal(SIGCONT, foo);
 
+    // log filename creation
     char fileName[64];
     time_t tmp;
     time(&tmp);
     strftime( fileName, sizeof(fileName), "./logs/log_%d-%m-%Y_%X.log", localtime(&tmp) );
-    say(fileName);
+
     LOG_FILE = fopen(fileName, "w");
     if( LOG_FILE == NULL ){
         perror( "Could not open log file" );
         exit(errno);
     }
+    // replaces stderr with log file
     if( dup2( fileno(LOG_FILE), fileno(stderr) ) == -1 ){
         perror( "dup error" );
         fclose(LOG_FILE);
@@ -84,17 +86,12 @@ int main(int argc, char *argv[]){
             }
         }
     }
-    // pid_t directorPID;
-    // if( (directorPID = fork()) == -1 ){
-    //     perror("director fork error");
-    //     exit(errno);
-    // }
-    // else if( directorPID == 0 ){
-        if( execl( "./director", "director", NULL )  == -1){
-            perror("error running director process");
-            exit(errno);
-        }
-    // }
+
+    // switch to director process to keep terminal input
+    if( execl( "./director", "director", NULL )  == -1){
+        perror("error running director process");
+        exit(errno);
+    }
     say( "Done! Shutting down..." );
 
     return 0;

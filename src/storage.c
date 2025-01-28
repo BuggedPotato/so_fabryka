@@ -33,35 +33,35 @@ time_t LAST_DRAW = 0;
 int main(int argc, char *argv[]){
     PID = getpid();
 
-    key_t shmKey = getKey( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
+    key_t shmKey = ftok( STORAGE_KEY_STR, STORAGE_KEY_CHAR );
     char *shmAddr = NULL;
     int shmId = createStorage( shmKey, STORAGE_TOTAL_SIZE );
     storageSegment segments[3];
-    // maybe unnecessary if?
     if( storageSetup(shmId, &shmAddr, STORAGE_TOTAL_SIZE) ){
         perror( "error building storage structure" );
         exit(EXIT_FAILURE);
     }
 
-    key_t semKey = getKey( SEM_KEY_STR, SEM_KEY_CHAR );
+    key_t semKey = ftok( SEM_KEY_STR, SEM_KEY_CHAR );
     int semId = getSemaphores( semKey, 3, 0600 );
     semaphoresSetup( semId );
     
+    // signal to manager (parent) to continue with other processes
     say("Sending continue signal");
     printf("%d\n", getppid());
     if( kill( getppid(), SIGCONT ) == -1)
         error("error sending continue");
 
-    key_t msgQKey = getKey( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
+    key_t msgQKey = ftok( MSGQ_KEY_STRING, MSGQ_KEY_CHAR );
     int msgQId = getMessageQueue( msgQKey, 0700 );
 
     message msg;
-    say("Entering standby mode - awaiting messages...");
     // shm snapshot for drawing
     char shmCopy[STORAGE_TOTAL_SIZE];
     semLower(semId, SEM_STORAGE);
     memcpy( shmCopy, shmAddr, STORAGE_TOTAL_SIZE );
     semRaise(semId, SEM_STORAGE);
+    say("Awaiting messages...");
     while( 1 ){
         int res = msgrcv( msgQId, (void *)&msg, MSG_TEXT_SIZE, MESSAGES_STORAGE, IPC_NOWAIT );
         if( res == -1 ){
@@ -73,11 +73,16 @@ int main(int argc, char *argv[]){
         else{
             break;
         }
-        semLower(semId, SEM_STORAGE);
-        res = drawStorageDiff( shmCopy, shmAddr, STORAGE_TOTAL_SIZE );
-        if( res )
+
+        // draw storage to terminal if enough time has passed
+        time_t n;
+        if( time(&n) - LAST_DRAW >= 0 || LAST_DRAW == 0 ){
+            LAST_DRAW = n;
+            semLower(semId, SEM_STORAGE);
+            drawStorageDiff( shmCopy, shmAddr, STORAGE_TOTAL_SIZE );
             memcpy( shmCopy, shmAddr, STORAGE_TOTAL_SIZE );
-        semRaise(semId, SEM_STORAGE);
+            semRaise(semId, SEM_STORAGE);
+        }
     }
     
     say( "Got a message!" );
@@ -97,8 +102,14 @@ int main(int argc, char *argv[]){
     return 0;
 }
 /*
-    creates shm of 'size' elements + delivery and recieve value points
-    size = M
+* Function Name:	createStorage
+*
+* Function:			allocate shared memory with shmget
+*
+* Arguments:		key - shm key (from ftok),
+                    size - shm size in bytes
+*
+* Return:			id of created shared memory, exit on error
 */
 int createStorage(key_t key, int size){
     
@@ -110,6 +121,17 @@ int createStorage(key_t key, int size){
     return shmId;
 }
 
+/*
+* Function Name:	storageSetup
+*
+* Function:			attach shared memory and load data from storage file
+*
+* Arguments:		shmId - shared memory id,
+                    shmAddr - address of pointer to shared memory (assigns to original pointer),
+                    size - shm size in bytes
+*
+* Return:			0->success, exit error -> failure/error
+*/
 int storageSetup(int shmId, char **shmAddr, int size){
     void *tmpPtr;
     tmpPtr = shmat( shmId, NULL, 0 );
@@ -128,6 +150,18 @@ int storageSetup(int shmId, char **shmAddr, int size){
     return 0;
 }
 
+/*
+* Function Name:	deleteStorage
+*
+* Function:			detach and remove shared memory
+*
+* Arguments:		shmId - shared memory id,
+            		semId - semaphore set id,
+                    shmAddr - pointer to shared memory,
+                    size - shm size in bytes
+*
+* Return:			0->success, exit error -> failure/error
+*/
 int deleteStorage( int shmId, int semId, char *shmAddr, int size ){
     say("waiting for semaphores");
     if( semLower( semId, SEM_STORAGE ) == -1 ){
@@ -150,6 +184,15 @@ int deleteStorage( int shmId, int semId, char *shmAddr, int size ){
     return 0;
 }
 
+/*
+* Function Name:	semaphoresSetup
+*
+* Function:			set semaphores intitial values
+*
+* Arguments:		semId - semaphore set id
+*
+* Return:			0->success, exit error -> failure/error
+*/
 int semaphoresSetup( int semId ){
     if( semctl( semId, SEM_STORAGE, SETVAL, 1 ) == -1 || semctl( semId, SEM_DELIVERY, SETVAL, 1 ) == -1 || semctl(semId, SEM_QUEUE, SETVAL, 1) == -1 ){
         perror("cannot set semaphores init value");
@@ -159,8 +202,17 @@ int semaphoresSetup( int semId ){
     return 0;
 }
 
+
+/*
+* Function Name:	deleteSemaphores
+*
+* Function:			delete semaphore set
+*
+* Arguments:		semId - semaphore set id
+*
+* Return:			0->success, exit error -> failure/error
+*/
 int deleteSemaphores( int semId ){
-    // fprintf(stderr, "%d\n", semId);
     if( semctl( semId, 0, IPC_RMID ) == -1 ){
         perror("cannot delete semaphore set");
         exit(errno);
@@ -169,6 +221,17 @@ int deleteSemaphores( int semId ){
     return 0;
 }
 
+/*
+* Function Name:	loadStorageFile
+*
+* Function:			load data from file into storage (shared memory)
+*
+* Arguments:		fileName - input file name,
+                    dest - destination,
+                    end - end of available addresses (final address + 1)
+*
+* Return:			0->success, 1->file too long, -1->no file found
+*/
 int loadStorageFile( char *fileName, char *dest, char *end ){
     say("Loading storage file");
     FILE* file = NULL;
@@ -203,6 +266,17 @@ int loadStorageFile( char *fileName, char *dest, char *end ){
     return 0;
 }
 
+/*
+* Function Name:	saveStorageFile
+*
+* Function:			sava data from storage (shared memory) to file
+*
+* Arguments:		fileName - input file name,
+                    src - data source,
+                    end - end of available addresses (final address + 1)
+*
+* Return:			0->success, exit on error
+*/
 int saveStorageFile( char *fileName, char *src, char *end ){
     FILE* file = NULL;
     if( (file = fopen( fileName, "w" )) == NULL ){
@@ -221,24 +295,31 @@ int saveStorageFile( char *fileName, char *src, char *end ){
     return 0;
 }
 
+/*
+* Function Name:	drawStorageDiff
+*
+* Function:			draw a visualisation of storage (shared memory) in terminal,
+                    marks changes between last draw with colours:
+                    green = added, red = removed
+*
+* Arguments:		last - last drawn shared memory copy,
+                    curr - address of current shared memory state,
+                    size - size of both in bytes
+*
+* Return:			0->not drawn, exit on error
+*/
 int drawStorageDiff( char* last, char* curr, int size){
-    time_t n;
-    if( time(&n) - LAST_DRAW >= 0.5 || LAST_DRAW == 0 )
-        LAST_DRAW = n;
-    else 
-        return 0;
-
     printf("\e[2;1H");
     char t[10];
     getTime(t);
     printf("\e[0JLast update: %s\n", t);
-    
+    // colours for seperating elements
     char colours[3][6] = { "\e[36m", "\e[35m", "\e[37m" };
-    char def[] = "\e[39m";
+    char def[] = "\e[39m"; // default text colour
     int c = 0;
 
     int line = 0, highlight = 0;
-    int indexes = size - 6 * sizeof(int);
+    int indexes = size - 6 * sizeof(int); // index of read/write fields in shm
     int elSizes[3] = {SIZE_X, SIZE_Y, SIZE_Z};
     int el = 0;
     int segment = 0;
@@ -271,7 +352,7 @@ int drawStorageDiff( char* last, char* curr, int size){
             printf("\n");
             line = 0;
         }
-
+        // seperates segments
         if( el == elSizes[segment] * STORAGE_COUNT ){
             printf("\n");
             segment++;
